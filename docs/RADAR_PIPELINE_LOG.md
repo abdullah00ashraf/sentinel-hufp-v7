@@ -84,3 +84,8 @@ This document tracks verified architectural iterations, feature additions, and p
 - **Status**: Verified & Integrated into `main`
 - **Timestamp**: `2025-05-23T15:58:25+0530`
 
+### [2025-05-24 16:47 IST] - `feat(hazard): add adaptive Otsu thresholding for submerged pixels`
+- **Component**: SAR Radar & Geospatial Analysis Engine
+- **Status**: Verified & Integrated into `main`
+- **Timestamp**: `2025-05-24T16:47:38+0530`
+
