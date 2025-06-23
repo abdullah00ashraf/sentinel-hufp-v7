@@ -99,3 +99,8 @@ This document tracks verified architectural iterations, feature additions, and p
 - **Status**: Verified & Integrated into `main`
 - **Timestamp**: `2025-06-20T13:33:47+0530`
 
+### [2025-06-23 15:23 IST] - `test(radar): add verification test for radiometric terrain correction`
+- **Component**: SAR Radar & Geospatial Analysis Engine
+- **Status**: Verified & Integrated into `main`
+- **Timestamp**: `2025-06-23T15:23:02+0530`
+
