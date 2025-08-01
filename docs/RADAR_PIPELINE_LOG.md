@@ -124,3 +124,8 @@ This document tracks verified architectural iterations, feature additions, and p
 - **Status**: Verified & Integrated into `main`
 - **Timestamp**: `2025-07-24T12:45:13+0530`
 
+### [2025-08-01 22:16 IST] - `docs(specs): formalize VV/VH cross-polarization flood ratio metrics`
+- **Component**: SAR Radar & Geospatial Analysis Engine
+- **Status**: Verified & Integrated into `main`
+- **Timestamp**: `2025-08-01T22:16:04+0530`
+
