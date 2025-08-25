@@ -154,3 +154,8 @@ This document tracks verified architectural iterations, feature additions, and p
 - **Status**: Verified & Integrated into `main`
 - **Timestamp**: `2025-08-20T10:41:50+0530`
 
+### [2025-08-25 18:32 IST] - `fix(nodata): mask out nodata sensor margins before thresholding`
+- **Component**: SAR Radar & Geospatial Analysis Engine
+- **Status**: Verified & Integrated into `main`
+- **Timestamp**: `2025-08-25T18:32:50+0530`
+
