@@ -284,3 +284,8 @@ This document tracks verified architectural iterations, feature additions, and p
 - **Status**: Verified & Integrated into `main`
 - **Timestamp**: `2026-02-20T19:05:33+0530`
 
+### [2026-02-25 19:49 IST] - `docs(pipeline): add end-to-end architecture diagram for SAR processing`
+- **Component**: SAR Radar & Geospatial Analysis Engine
+- **Status**: Verified & Integrated into `main`
+- **Timestamp**: `2026-02-25T19:49:32+0530`
+
