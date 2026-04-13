@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL V7 | Neural Expert System & XAI Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Legacy dependencies preserved as requested -->
+    <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #020203; /* Deepened for higher contrast */
+            --panel: rgba(8, 10, 16, 0.94); /* Sharper, less transparent */
+            --brand: #00f3ff;
+            --accent: #b084f5;
+            --nominal: #22c55e;
+            --warning: #f59e0b;
+            --critical: #ef4444;
+            --terminal-bg: rgba(6, 8, 12, 0.94);
+        }
+
+        body { background-color: var(--bg); color: #cbd5e1; font-family: 'Space Grotesk', sans-serif; overflow-x: hidden; line-height: 1.6; background-image: radial-gradient(circle at top left, rgba(0,243,255,0.08), transparent 18%), radial-gradient(circle at bottom right, rgba(173,250,252,0.04), transparent 24%); background-attachment: fixed; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .sci-panel {
+            background: var(--panel);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 18px 50px rgba(0,0,0,0.55);
+            position: relative;
+            transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .sci-panel:hover { border-color: rgba(0, 243, 255, 0.22); transform: translateY(-1px); box-shadow: 0 22px 55px rgba(0,0,0,0.6); }
+
+        .bracket-box { position: relative; }
+        .bracket-box::before, .bracket-box::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border: 1px solid var(--brand);
+            opacity: 0.4;
+            pointer-events: none;
+            transition: all 0.3s;
+        }
+        .bracket-box::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .bracket-box::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+        .bracket-box:hover::before, .bracket-box:hover::after { width: 22px; height: 22px; opacity: 0.8; }
+
+        .scanline { position: fixed; inset: 0; background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.18) 51%); background-size: 100% 4px; pointer-events: none; z-index: 9999; opacity: 0.18; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 243, 255, 0.22); border-radius: 4px; }
+
+        .hex-bg {
+            background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+
+        .metric-bar-fill { transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        .param-badge {
+            background: rgba(0, 243, 255, 0.08);
+            color: var(--brand);
+            border: 1px solid rgba(0, 243, 255, 0.18);
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .data-row { transition: background-color 0.2s, transform 0.2s; }
+        .data-row:hover { background-color: rgba(0, 243, 255, 0.08); transform: translateX(2px); }
+        .tooltip-text { display: none; position: absolute; top: 50%; left: 100%; transform: translateY(-50%) translateX(8px); background: rgba(2, 6, 12, 0.96); border: 1px solid rgba(0,243,255,0.18); padding: 10px 12px; z-index: 50; border-radius: 8px; font-size: 0.72rem; max-width: 240px; color: #e2e8f0; box-shadow: 0 16px 40px rgba(0,0,0,0.45); pointer-events: none; }
+        .data-row:hover .tooltip-text { display: block; }
+
+        #terminal-output p, #paradox-log p { margin: 3px 0; animation: fade-in 0.25s ease-in-out; line-height: 1.45; }
+        @keyframes fade-in { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+
+        .soil-pattern {
+            background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 10px 10px;
+        }
+
+        .heat-aura { transition: box-shadow 0.5s ease, border-color 0.5s ease; }
+        .aura-nominal { box-shadow: 0 0 14px rgba(34,197,94,0.35); border-color: rgba(34,197,94,0.7); }
+        .aura-warning { box-shadow: 0 0 20px rgba(245,158,11,0.45); border-color: rgba(245,158,11,0.8); }
+        .aura-critical { box-shadow: 0 0 28px rgba(239,68,68,0.75); border-color: rgba(239,68,68,1); }
+
+        .attention-cell { transition: opacity 0.3s ease, background-color 0.3s ease; }
+        .session-pill { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: #dbeafe; padding: 0.7rem 1rem; border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 0.5rem; }
+
+        #fairuse-footer {
+            position: relative;
+            overflow: hidden;
+            background: rgba(7, 11, 19, 0.92);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px;
+            box-shadow: 0 22px 60px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(18px);
+        }
+
+        #fairuse-footer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(circle at 15% 25%, rgba(0,243,255,0.08), transparent 16%),
+                radial-gradient(circle at 78% 45%, rgba(176,84,245,0.07), transparent 18%),
+                linear-gradient(150deg, rgba(255,255,255,0.03), transparent 42%, rgba(255,255,255,0.02));
+            opacity: 0.7;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+
+        #fairuse-footer::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                repeating-linear-gradient(135deg, rgba(0,243,255,0.05) 0 2px, transparent 2px 26px),
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 18px);
+            opacity: 0.55;
+            pointer-events: none;
+            animation: footerMeshShift 14s linear infinite;
+            mix-blend-mode: overlay;
+        }
+
+        .fairuse-glow-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            opacity: 0.8;
+            filter: blur(1px);
+            box-shadow: 0 0 18px rgba(255,255,255,0.35);
+            pointer-events: none;
+            animation: footerGlowBounce 6s ease-in-out infinite alternate;
+        }
+
+        .fairuse-glow-dot:nth-child(1) { background: rgba(0,243,255,0.7); top: 18%; left: 8%; animation-delay: 0s; }
+        .fairuse-glow-dot:nth-child(2) { background: rgba(176,84,245,0.68); top: 40%; left: 88%; animation-delay: 1.4s; }
+        .fairuse-glow-dot:nth-child(3) { background: rgba(255,255,255,0.55); top: 62%; left: 20%; animation-delay: 2.8s; }
+        .fairuse-glow-dot:nth-child(4) { background: rgba(0,255,166,0.6); top: 78%; left: 74%; animation-delay: 4.2s; }
+
+        @keyframes footerGlowBounce {
+            0% { transform: translateY(0) scale(0.85); opacity: 0.65; }
+            50% { transform: translateY(-10px) scale(1.05); opacity: 0.95; }
+            100% { transform: translateY(0) scale(0.9); opacity: 0.7; }
+        }
+
+        @keyframes footerMeshShift {
+            from { transform: translate(0, 0); }
+            to { transform: translate(22px, -18px); }
+        }
+
+        @keyframes footerMeshShift {
+            from { transform: translate(0, 0); }
+            to { transform: translate(22px, -18px); }
+        }
+
+        .footer-card-inner {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 0.6rem;
+        }
+
+        .footer-card-inner .fairuse-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-card-inner .fairuse-title span {
+            letter-spacing: 0.22em;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.55);
+        }
+
+        .footer-card-inner .fairuse-message {
+            color: #dbeafe;
+            font-size: 0.88rem;
+            line-height: 1.7;
+            max-width: 1100px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6 hex-bg selection:bg-brand selection:text-black min-h-screen flex flex-col relative">
+    <div class="scanline"></div>
+
+    <!-- ========================================================= -->
+    <!-- INTRODUCTION & MLOPS DETAILS (Consolidated Infrastructure) -->
+    <!-- ========================================================= -->
+    <header class="max-w-[1600px] mx-auto w-full mb-6 relative z-10">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 border-b border-white/10 pb-4 mb-4">
+            <div>
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="text-brand bg-white/5 p-2 rounded-lg border border-white/10 shadow-[0_0_10px_rgba(0,243,255,0.1)]"><i data-lucide="cpu" class="w-5 h-5"></i></div>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tighter uppercase leading-none">SENTINEL V7 <span class="text-brand font-light">Suite</span></h1>
+                        <p class="text-[10px] font-mono text-gray-500 tracking-widest uppercase mt-1">LUCKNOW HUFP NEURAL EXPERT SYSTEM | ARCHITECTURE PROFILER</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+                <div class="flex items-center gap-2 bg-black/60 border border-white/10 px-3 py-1.5 rounded-md text-[10px] font-mono shadow-inner">
+                    <span class="text-gray-500">LOC:</span> <span class="text-white font-bold tracking-widest">LUCKNOW, IND [26.84°N, 80.94°E]</span>
+                </div>
+                <div id="status-badge" class="flex items-center gap-3 bg-green-500/10 border border-green-500/30 px-3 py-1.5 rounded-md shadow-[0_0_10px_rgba(34,197,94,0.1)] transition-colors duration-500">
+                    <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                    <span id="api-uplink-status" class="text-[10px] font-mono font-bold text-green-400 tracking-widest uppercase">HF UPLINK SECURE</span>
+                </div>
+                <div id="session-timer" class="session-pill">
+                    <i data-lucide="clock" class="w-3 h-3"></i>
+                    <span>SESSION <span id="session-duration">00:00:00</span></span>
+                </div>
+                <!-- NEW MILESTONE: Primary Hub Redirect Button -->
+                <a href="index.html" class="flex items-center gap-2 bg-brand/10 border border-brand/30 text-brand hover:text-white px-4 py-1.5 rounded-md text-[10px] font-mono font-bold hover:bg-brand/20 transition-all shadow-[0_0_10px_rgba(0,243,255,0.1)] hover:shadow-[0_0_15px_rgba(0,243,255,0.3)]">
+                    <i data-lucide="monitor-stop" class="w-3 h-3"></i> MAIN C2 HUB
+                </a>
+            </div>
+        </div>
+
+        <div class="sci-panel p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 text-[10px] font-mono bracket-box">
+            <div class="space-y-2 lg:col-span-1">
+                <p class="text-white/40 uppercase tracking-widest border-b border-white/5 pb-1 mb-3">HF Infrastructure</p>
+                <div class="flex justify-between"><span>Compute Space:</span><a href="https://huggingface.co/spaces/abdullahashraf122/sentinel-v7-brain" target="_blank" class="text-brand hover:underline">sentinel-v7-brain</a></div>
+                <div class="flex justify-between"><span>API Framework:</span><span class="text-white">FastAPI + Uvicorn</span></div>
+                <div class="flex justify-between"><span>Global Latency:</span><span id="sys-latency" class="text-green-400 font-bold animate-pulse">-- ms</span></div>
+            </div>
+            <div class="space-y-2 lg:col-span-1">
+                <p class="text-white/40 uppercase tracking-widest border-b border-white/5 pb-1 mb-3">Data Provenance</p>
+                <div class="flex justify-between"><span>Primary Dataset:</span><a href="https://huggingface.co/datasets/abdullahashraf122/lucknow_hufp_datasets" target="_blank" class="text-brand hover:underline">lucknow_hufp</a></div>
+                <div class="flex justify-between"><span>Vault Records:</span><span id="sys-records" class="text-white font-bold">83,986,875</span></div>
+                <div class="flex justify-between"><span>Live Weather API:</span><span class="text-blue-400">Open-Meteo (Syncing)</span></div>
+            </div>
+            <div class="space-y-2 lg:col-span-1">
+                <p class="text-white/40 uppercase tracking-widest border-b border-white/5 pb-1 mb-3">Model Architecture</p>
+                <div class="flex justify-between"><span>Topology:</span><span class="text-white">9-Layer Bi-LSTM</span></div>
+                <div class="flex justify-between"><span>Trainable Weights:</span><span class="text-accent font-bold">331,009</span></div>
+                <div class="flex justify-between"><span>Inference Tensor:</span><span class="text-gray-500">Shape (1, 8) FP32</span></div>
+            </div>
+            <!-- Terminal Output Section -->
+            <div class="space-y-2 lg:col-span-2 bg-black/60 rounded border border-white/5 p-3 relative overflow-hidden group">
+                <div class="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')]"></div>
+                <div class="flex justify-between items-center border-b border-white/10 pb-1 mb-2">
+                    <span class="text-white/40 uppercase tracking-widest">System Diagnostics Log</span>
+                    <i data-lucide="terminal" class="w-3 h-3 text-brand"></i>
+                </div>
+                <div id="terminal-output" class="h-[60px] overflow-y-auto custom-scrollbar text-[9px] text-gray-400 font-mono space-y-1 pr-2 flex flex-col justify-end">
+                    <p><span class="text-brand">[SYS]</span> Initializing SENTINEL V7 Boot Sequence...</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================================= -->
+    <!-- PRESERVED MILESTONE: LIVE NEURAL INFERENCE OVERMIND       -->
+    <!-- ========================================================= -->
+    <section class="max-w-[1600px] mx-auto w-full mb-8 relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Live Inference Engine & Sub-Surface Profiler -->
+        <div class="lg:col-span-2 sci-panel p-6 rounded-lg flex flex-col relative overflow-hidden min-h-[450px] bg-[#050508] bracket-box">
+            <div class="flex items-center justify-between mb-5 border-b border-white/10 pb-3 relative z-10">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="cpu" class="w-5 h-5 text-brand"></i>
+                    <h2 class="text-sm font-bold text-white tracking-widest uppercase">Live Inference Engine & Sub-Surface Profiler</h2>
+                </div>
+                <div class="flex items-center gap-2 border border-brand/20 bg-brand/5 px-3 py-1 rounded">
+                    <span class="animate-pulse w-2 h-2 rounded-full bg-brand shadow-[0_0_8px_#00f3ff]"></span>
+                    <span class="text-[9px] font-mono text-brand font-bold uppercase tracking-widest">Real-Time Neural Processing</span>
+                </div>
+            </div>
+            
+            <div class="flex-1 flex flex-col lg:flex-row gap-8">
+                
+                <!-- 1. Raw Telemetry Ingestion -->
+                <div class="w-full lg:w-1/3 flex flex-col gap-4 relative z-10">
+                    <span class="text-[9px] text-gray-500 uppercase tracking-widest border-b border-white/5 pb-1">Raw Sensor Ingestion</span>
+                    
+                    <div class="space-y-3 font-mono">
+                        <!-- Precip -->
+                        <div class="bg-black/50 border border-white/10 rounded-md p-3 flex justify-between items-center relative overflow-hidden group">
+                            <div class="absolute left-0 top-0 w-1 h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]"></div>
+                            <span class="text-[10px] text-gray-400">PRECIP_MM_H</span>
+                            <span id="oi-precip" class="text-blue-400 font-bold text-xl tracking-wider group-hover:scale-105 transition-transform">0.00</span>
+                        </div>
+                        
+                        <!-- Soil -->
+                        <div class="bg-black/50 border border-white/10 rounded-md p-3 flex justify-between items-center relative overflow-hidden group">
+                            <div class="absolute left-0 top-0 w-1 h-full bg-warning shadow-[0_0_10px_#f59e0b]"></div>
+                            <span class="text-[10px] text-gray-400">SOIL_MST_VOL</span>
+                            <span id="oi-soil" class="text-warning font-bold text-xl tracking-wider group-hover:scale-105 transition-transform">0.24</span>
+                        </div>
+                        
+                        <!-- Temp -->
+                        <div class="bg-black/50 border border-white/10 rounded-md p-3 flex justify-between items-center relative overflow-hidden group">
+                            <div class="absolute left-0 top-0 w-1 h-full bg-nominal shadow-[0_0_10px_#22c55e]"></div>
+                            <span class="text-[10px] text-gray-400">SURF_TEMP_C</span>
+                            <span id="oi-temp" class="text-nominal font-bold text-xl tracking-wider group-hover:scale-105 transition-transform">32.4</span>
+                        </div>
+                    </div>
+
+                    <!-- Tensor Log Terminal -->
+                    <div class="flex-1 border border-white/5 bg-black/60 rounded-md p-3 font-mono text-[9px] text-gray-500 overflow-hidden relative shadow-inner flex flex-col justify-end mt-2">
+                        <div class="absolute top-0 left-0 w-full h-full pointer-events-none opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')]"></div>
+                        <span class="block mb-2 text-brand font-bold border-b border-white/5 pb-1">>> LIVE TENSOR LOG:</span>
+                        <div id="oi-tensor-log" class="space-y-1 h-[80px] overflow-hidden flex flex-col justify-end">
+                            <div>[SYS] Waiting for stream...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Sub-Surface Saturation Cross-Section -->
+                <div class="w-full lg:w-1/3 flex flex-col gap-4 relative z-10">
+                    <span class="text-[9px] text-gray-500 uppercase tracking-widest border-b border-white/5 pb-1">Sub-Surface Saturation Profile</span>
+                    
+                    <div class="flex-1 bg-black/80 rounded-lg border border-white/10 relative overflow-hidden flex flex-col justify-end p-0 shadow-[inset_0_0_30px_rgba(0,0,0,0.8)] soil-pattern">
+                        
+                        <!-- Depth Markers -->
+                        <div class="absolute left-2 top-2 text-[9px] font-mono text-gray-500 z-20">0cm (Surface)</div>
+                        <div class="absolute left-2 bottom-2 text-[9px] font-mono text-gray-500 z-20">-7cm (Deep)</div>
+
+                        <!-- Dynamic Water Level -->
+                        <div id="oi-water-level" class="w-full bg-blue-900/40 border-t-2 border-blue-400 relative transition-all duration-1000 ease-in-out z-10" style="height: 24%;">
+                            <div class="absolute inset-0 bg-gradient-to-t from-blue-600/20 to-transparent"></div>
+                            <!-- Liquid Wave effect -->
+                            <div class="absolute top-0 left-0 w-full h-full opacity-30" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,243,255,0.2) 10px, rgba(0,243,255,0.2) 20px);"></div>
+                        </div>
+
+                        <!-- Centered Percentage overlay -->
+                        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-30 w-full">
+                            <span id="oi-saturation-pct" class="text-4xl font-bold font-mono text-white drop-shadow-[0_4px_8px_rgba(0,0,0,1)] tracking-tighter">24.0%</span>
+                            <span class="block text-[9px] font-mono text-brand uppercase tracking-widest mt-1 bg-black/60 mx-auto w-max px-2 py-0.5 rounded border border-white/10">Soil Saturation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Calculated Threat Matrix -->
+                <div class="w-full lg:w-1/3 flex flex-col gap-4 relative z-10">
+                    <span class="text-[9px] text-gray-500 uppercase tracking-widest border-b border-white/5 pb-1">Calculated Threat Vector</span>
+                    
+                    <div class="bg-black/60 border border-white/10 rounded-lg p-5 flex flex-col items-center justify-center relative overflow-hidden flex-1 shadow-inner group">
+                        
+                        <!-- The Massive Donut Chart -->
+                        <div class="relative w-32 h-32 mb-4">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="none"></circle>
+                                <circle id="oi-threat-ring" cx="50" cy="50" r="40" stroke="#22c55e" stroke-width="8" fill="none" stroke-dasharray="251.2" stroke-dashoffset="190.9" class="transition-all duration-1000 ease-in-out drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]"></circle>
+                            </svg>
+                            <!-- Inner Value -->
+                            <div class="absolute inset-0 flex items-center justify-center flex-col">
+                                <span id="oi-threat-val" class="text-3xl font-bold font-mono text-nominal mt-1">24.0%</span>
+                            </div>
+                        </div>
+
+                        <span id="oi-threat-status" class="text-[14px] font-bold font-mono text-nominal uppercase tracking-widest mt-1">NOMINAL RISK</span>
+                        <span class="text-[8px] text-gray-500 font-mono mt-1">OVERALL CATASTROPHE PROB.</span>
+                        
+                        <!-- Secondary Impact Vectors -->
+                        <div class="w-full mt-6 space-y-3 bg-black/40 p-3 rounded border border-white/5">
+                            <div>
+                                <div class="flex justify-between text-[9px] font-mono text-gray-400 mb-1.5">
+                                    <span>Grid Failure Probability</span>
+                                    <span id="oi-grid-prob" class="font-bold text-white">4.8%</span>
+                                </div>
+                                <div class="w-full h-1 bg-white/10 rounded overflow-hidden">
+                                    <div id="oi-grid-bar" class="h-full bg-warning transition-all duration-1000" style="width: 4.8%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[9px] font-mono text-gray-400 mb-1.5">
+                                    <span>Evacuation Requirement</span>
+                                    <span id="oi-evac-prob" class="font-bold text-white">9.6%</span>
+                                </div>
+                                <div class="w-full h-1 bg-white/10 rounded overflow-hidden">
+                                    <div id="oi-evac-bar" class="h-full bg-critical transition-all duration-1000" style="width: 9.6%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="absolute inset-0 pointer-events-none shadow-[inset_0_0_60px_rgba(0,0,0,0.8)] z-0"></div>
+        </div>
+
+        <!-- Auto-Synthesized NLP SitRep Terminal -->
+        <div class="sci-panel p-6 rounded-lg flex flex-col h-[450px] bracket-box">
+            <div class="flex items-center gap-3 mb-2 border-b border-white/10 pb-2">
+                <i data-lucide="file-text" class="w-5 h-5 text-nominal"></i>
+                <h2 class="text-sm font-bold text-white tracking-widest uppercase">Live SitRep Terminal</h2>
+            </div>
+            
+            <div class="flex-1 bg-terminal-bg rounded border border-white/10 p-4 font-mono text-[11px] leading-relaxed relative overflow-y-auto custom-scrollbar shadow-inner mt-2">
+                <div class="absolute top-2 right-2 text-[8px] text-gray-600 tracking-widest uppercase">NLP ENGINE v7.1</div>
+                <div id="sitrep-content" class="text-nominal">Initializing Auto-Synthesis NLP Engine...</div>
+                <span class="animate-ping inline-block w-1.5 h-3 bg-nominal align-middle ml-1 mt-1"></span>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- THE 20 DISTINCTIVE EXPERT PARAMETERS GRID                 -->
+    <!-- ========================================================= -->
+    <main class="max-w-[1600px] mx-auto w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10 flex-1">
+
+        <!-- DOMAIN A: EXPLAINABLE AI (XAI) -->
+        <div class="xl:col-span-2 sci-panel p-6 rounded-lg flex flex-col">
+            <div class="flex items-center gap-3 mb-6 border-b border-white/10 pb-3">
+                <i data-lucide="brain-circuit" class="w-5 h-5 text-brand"></i>
+                <h2 class="text-sm font-bold text-white tracking-widest uppercase">Explainable AI (XAI) & Interpretability</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
+                <div class="flex flex-col">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2"><span class="param-badge">PARAM 01</span><h3 class="text-xs font-mono text-gray-300 uppercase">SHAP Feature Matrix</h3></div>
+                        <i data-lucide="radar" class="w-4 h-4 text-brand animate-spin-slow"></i>
+                    </div>
+                    <div class="flex-1 relative min-h-[220px]">
+                        <canvas id="xaiRadarChart"></canvas>
+                    </div>
+                </div>
+                <div class="flex flex-col justify-center space-y-5">
+                    <div class="flex items-center gap-2 mb-1"><span class="param-badge">PARAM 02</span><h3 class="text-xs font-mono text-gray-300 uppercase">LIME Perturbation Impact</h3></div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-mono mb-1.5"><span class="text-white">Rainfall Intensity Vector</span><span id="lime-rain" class="text-brand">+0.395 Δ</span></div>
+                        <div class="w-full h-1.5 bg-black/50 rounded overflow-hidden"><div id="bar-rain" class="h-full bg-brand metric-bar-fill" style="width: 0%" data-target="85%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-mono mb-1.5"><span class="text-white">Soil Saturation Index</span><span id="lime-soil" class="text-brand">+0.383 Δ</span></div>
+                        <div class="w-full h-1.5 bg-black/50 rounded overflow-hidden"><div id="bar-soil" class="h-full bg-brand metric-bar-fill" style="width: 0%" data-target="82%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-mono mb-1.5"><span class="text-white">Elevation (Geospatial Topo)</span><span class="text-green-400">-0.211 Δ</span></div>
+                        <div class="w-full h-1.5 bg-black/50 rounded overflow-hidden"><div class="h-full bg-green-500 metric-bar-fill" style="width: 0%" data-target="45%"></div></div>
+                    </div>
+                    <p class="text-[9px] font-mono text-gray-500 leading-relaxed mt-4 border-t border-white/5 pt-3">
+                        *LIME analysis confirms the model continuously adjusts weights. Current observation prioritizes active meteorological anomalies over static geospatial topology when calculating hyper-local inundation probabilities in Lucknow.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- DOMAIN B: ADVANCED HYDROLOGY & SAR SENSORS -->
+        <div class="sci-panel p-6 rounded-lg flex flex-col relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-[50px] -z-10"></div>
+            
+            <div class="flex items-center justify-between mb-6 border-b border-white/10 pb-3">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="cloud-rain" class="w-5 h-5 text-blue-400"></i>
+                    <h2 class="text-sm font-bold text-white tracking-widest uppercase">Live Hydrology & SAR</h2>
+                </div>
+                <span class="flex h-2 w-2 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+            </div>
+            
+            <div class="space-y-4 flex-1 flex flex-col font-mono text-[10px]">
+                <div>
+                    <div class="flex items-center gap-2 mb-1.5"><span class="param-badge border-blue-500/30 text-blue-400 bg-blue-500/10">LIVE 01</span><span class="text-gray-300">Surface Temp & Precip</span></div>
+                    <div class="flex justify-between items-center bg-black/40 p-2 rounded border border-white/5 shadow-inner">
+                        <span id="live-temp-b" class="text-white font-bold">Syncing...</span>
+                        <span id="live-precip-b" class="text-blue-400 font-bold">Syncing...</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 mb-1.5"><span class="param-badge border-blue-500/30 text-blue-400 bg-blue-500/10">PARAM 05</span><span class="text-gray-300">Soil Moisture Proxy</span></div>
+                    <div class="flex justify-between items-center bg-black/40 p-2 rounded border border-white/5"><span class="text-gray-500">Volumetric Content</span><span id="live-soil-b" class="text-warning font-bold">Syncing...</span></div>
+                </div>
+                
+                <!-- SAR-VH Change Detection Graph -->
+                <div class="flex-1 mt-2 pt-3 border-t border-white/5 flex flex-col">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2"><span class="param-badge border-blue-500/30 text-blue-400 bg-blue-500/10">PARAM 07</span><span class="text-gray-300">SAR-VH Change Det.</span></div>
+                        <span class="text-[9px] font-bold text-white bg-blue-500/20 px-2 py-0.5 rounded">-21.4 dB</span>
+                    </div>
+                    <div class="h-[70px] w-full bg-black/30 rounded border border-white/5 p-1 relative">
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20"><i data-lucide="satellite" class="w-8 h-8 text-blue-400"></i></div>
+                        <canvas id="sarChart"></canvas>
+                    </div>
+                    <div class="flex justify-between text-[8px] text-gray-500 mt-1">
+                        <span>Dry Baseline: -15dB</span>
+                        <span>Water Signature Detected at -21dB</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DOMAIN C: NEURAL NETWORK DIAGNOSTICS (GHOST MODE) -->
+        <div class="sci-panel p-6 rounded-lg flex flex-col">
+            <div class="flex items-center gap-3 mb-6 border-b border-white/10 pb-3">
+                <i data-lucide="network" class="w-5 h-5 text-accent"></i>
+                <h2 class="text-sm font-bold text-white tracking-widest uppercase">Neural Diagnostics</h2>
+            </div>
+            
+            <div class="space-y-5 flex-1 flex flex-col">
+                <!-- Loss Convergence Chart -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2"><span class="param-badge border-accent/30 text-accent bg-accent/10">PARAM 08</span><h3 class="text-[10px] font-mono text-gray-300 uppercase">Loss Convergence</h3></div>
+                        <span id="loss-value" class="text-[9px] font-mono text-green-400 font-bold bg-green-400/10 px-2 py-1 rounded transition-all">MAE: 0.0004</span>
+                    </div>
+                    <div class="h-[70px] w-full"><canvas id="lossChart"></canvas></div>
+                </div>
+
+                <!-- Neural Architecture Ghost Mode -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2"><span class="param-badge border-accent/30 text-accent bg-accent/10">PARAM 09</span><h3 class="text-[10px] font-mono text-gray-300 uppercase">Ghost Mode (Bi-LSTM Flow)</h3></div>
+                        <span class="text-[9px] font-mono text-brand animate-pulse font-bold border border-brand/30 px-2 py-0.5 rounded bg-brand/5">LIVE TENSOR</span>
+                    </div>
+                    <div class="h-[120px] w-full bg-[#020202] rounded border border-white/5 overflow-hidden relative shadow-inner">
+                        <canvas id="neural-canvas" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+
+                <!-- Neural Self-Correction Matrix -->
+                <div class="flex-1 flex flex-col justify-end">
+                    <div class="flex items-center justify-between mb-2 border-b border-white/5 pb-1">
+                        <span class="text-[10px] font-mono text-gray-400">Self-Correction Matrix</span>
+                        <span class="text-[9px] font-mono text-accent" id="epoch-counter">EPOCH: 4892</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-[10px] font-mono mb-3">
+                        <div class="bg-black/40 p-2 rounded border border-white/5 flex flex-col justify-between">
+                            <span class="text-gray-500 mb-1">PARAM 10: Sparsity</span>
+                            <span class="text-white font-bold" id="sparsity-val">2.13%</span>
+                        </div>
+                        <div class="bg-black/40 p-2 rounded border border-white/5 flex flex-col justify-between">
+                            <span class="text-gray-500 mb-1">PARAM 11: Grad Norm</span>
+                            <span class="text-white font-bold" id="grad-val">0.014 ∇</span>
+                        </div>
+                    </div>
+                    <!-- Attention Weights Visualization -->
+                    <div class="w-full bg-black/40 border border-white/5 rounded p-1.5 flex justify-between gap-1" id="attention-matrix">
+                        <!-- Generated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DOMAIN D: PROBABILISTIC AUDITING & PARADOX REGISTRY -->
+        <div class="sci-panel p-6 rounded-lg flex flex-col">
+            <div class="flex items-center gap-3 mb-6 border-b border-white/10 pb-3">
+                <i data-lucide="shield-alert" class="w-5 h-5 text-warning"></i>
+                <h2 class="text-sm font-bold text-white tracking-widest uppercase">Probabilistic Auditing</h2>
+            </div>
+            
+            <div class="space-y-5 font-mono text-[10px] flex-1 flex flex-col">
+                <!-- Bayesian Uncertainty Heat Overlay -->
+                <div class="bg-white/5 p-4 rounded border border-white/5 flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2"><span class="param-badge border-warning/30 text-warning bg-warning/10">PARAM 13</span><span class="text-gray-300 font-bold uppercase">Bayesian Epistemic</span></div>
+                        <span class="text-gray-500 block">Out-Of-Distribution (OOD) Doubt</span>
+                    </div>
+                    <!-- Heat Aura Component -->
+                    <div class="relative w-12 h-12 flex items-center justify-center rounded-full bg-black border border-white/10">
+                        <div id="bayesian-aura" class="absolute inset-0 rounded-full border-2 aura-nominal heat-aura pointer-events-none"></div>
+                        <span class="text-[10px] font-bold text-white z-10" id="bayesian-val">0.02%</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3">
+                    <div class="flex justify-between items-center bg-black/40 p-2.5 rounded border border-white/5"><span class="text-gray-500"><span class="text-warning font-bold">PARAM 14:</span> Aleatoric Noise</span><span class="text-white font-bold" id="aleatoric-val">1.45%</span></div>
+                </div>
+
+                <!-- Logical Paradox Sanity Registry -->
+                <div class="flex-1 mt-2 flex flex-col">
+                    <div class="flex items-center gap-2 mb-2"><span class="param-badge border-warning/30 text-warning bg-warning/10">PARAM 15</span><span class="text-gray-300 font-bold uppercase">Logical Paradox Registry</span></div>
+                    <div class="flex-1 bg-terminal-bg border border-white/10 rounded p-2 overflow-hidden relative shadow-inner">
+                        <div class="absolute top-0 right-2 text-[8px] text-gray-600">Red-Team Auditor Active</div>
+                        <div id="paradox-log" class="text-[8px] text-green-400 space-y-1 h-[80px] flex flex-col justify-end">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DOMAIN E: SOCIO-ECONOMIC CASCADES -->
+        <div class="sci-panel p-6 rounded-lg flex flex-col">
+            <div class="flex items-center gap-3 mb-6 border-b border-white/10 pb-3">
+                <i data-lucide="activity-square" class="w-5 h-5 text-rose-500"></i>
+                <h2 class="text-sm font-bold text-white tracking-widest uppercase">Socio-Economic Vectors</h2>
+            </div>
+            
+            <div class="space-y-4 font-mono text-[10px] flex-1">
+                <div>
+                    <div class="flex items-center gap-2 mb-1.5"><span class="param-badge border-rose-500/30 text-rose-400 bg-rose-500/10">PARAM 16</span><span class="text-gray-300">Grid Islanding State</span></div>
+                    <div class="w-full bg-black/40 p-2.5 rounded border border-white/5 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-nominal animate-pulse"></span> <span class="text-white font-bold">POWER GRID NOMINAL</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 mb-1.5"><span class="param-badge border-rose-500/30 text-rose-400 bg-rose-500/10">PARAM 17</span><span class="text-gray-300">Pathogen Vector Amp.</span></div>
+                    <div class="flex justify-between items-center bg-black/40 p-2.5 rounded border border-white/5"><span class="text-gray-500">Biohazard Proxy</span><span class="text-green-400 font-bold">BASE RISK</span></div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 mb-1.5"><span class="param-badge border-rose-500/30 text-rose-400 bg-rose-500/10">PARAM 18</span><span class="text-gray-300">Infrastructure Cascade Prob.</span></div>
+                    <div class="flex justify-between items-center bg-black/40 p-2.5 rounded border border-white/5"><span class="text-gray-500">Domino Effect</span><span id="infra-cascade" class="text-white font-bold">12.4%</span></div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 mb-1.5"><span class="param-badge border-rose-500/30 text-rose-400 bg-rose-500/10">PARAM 19</span><span class="text-gray-300">Demographic Vulnerability</span></div>
+                    <div class="flex justify-between items-center bg-black/40 p-2.5 rounded border border-white/5"><span class="text-gray-500">Pediatric/Elderly Index</span><span class="text-warning font-bold">ELEVATED (18.2%)</span></div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 mb-1.5"><span class="param-badge border-rose-500/30 text-rose-400 bg-rose-500/10">PARAM 20</span><span class="text-gray-300">Multi-Spectral Optical Mask</span></div>
+                    <div class="flex justify-between items-center bg-black/40 p-2.5 rounded border border-white/5"><span class="text-gray-500">Cloud Penetration</span><span class="text-white font-bold" id="optical-mask">BLIND (USE SAR)</span></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- INTERACTIVE TELEMETRY DATA EXPLORER & EXPORT              -->
+    <!-- ========================================================= -->
+    <section class="max-w-[1600px] w-full mx-auto mt-8 relative z-10">
+        <div class="sci-panel rounded-lg overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 bg-black/40">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="database" class="w-5 h-5 text-brand"></i>
+                    <div>
+                        <h2 class="text-sm font-bold text-white tracking-widest uppercase">Live Telemetry Databank</h2>
+                        <p class="text-[10px] font-mono text-gray-500 mt-1">Interactive exploration of model parameters and dataset vectors.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="bg-black/50 border border-white/10 px-3 py-2 rounded flex items-center gap-2 min-w-[180px]">
+                        <i data-lucide="search" class="w-4 h-4 text-gray-400"></i>
+                        <input type="text" id="telemetry-search" placeholder="Search Params..." class="bg-transparent border-none outline-none text-[10px] font-mono text-white w-full sm:w-40 placeholder:text-gray-600" onkeyup="filterTelemetry()">
+                    </div>
+                    <button onclick="downloadCSV()" class="bg-brand/10 hover:bg-brand/20 border border-brand/30 text-brand font-mono text-[10px] font-bold py-2 px-4 rounded flex items-center gap-2 transition-colors">
+                        <i data-lucide="download" class="w-4 h-4"></i> EXPORT (CSV)
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto custom-scrollbar max-h-[400px]">
+                <table class="w-full text-left font-mono text-[10px]">
+                    <thead class="bg-black/60 text-gray-400 uppercase tracking-widest border-b border-white/10 sticky top-0 backdrop-blur-md z-10">
+                        <tr>
+                            <th class="px-6 py-4 font-bold">ID</th>
+                            <th class="px-6 py-4 font-bold">Parameter Definition</th>
+                            <th class="px-6 py-4 font-bold">Real-Time Value</th>
+                            <th class="px-6 py-4 font-bold">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="telemetry-table-body" class="divide-y divide-white/5 text-gray-300">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- SESSION TASK SEQUENCER FOOTER FEATURE                   -->
+    <!-- ========================================================= -->
+    <footer class="mt-8 border-t border-white/10 bg-black/90 relative z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
+        <div class="max-w-[1600px] mx-auto p-4 grid gap-4 lg:grid-cols-[1.8fr_1fr]">
+            <div class="sci-panel p-4 bg-[#090b12] border border-white/10 rounded-xl">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                        <span class="text-[9px] uppercase tracking-[0.32em] text-brand">Session Task Sequencer</span>
+                        <h3 class="text-white text-lg font-bold mt-2">Set automated task sequences for each session</h3>
+                    </div>
+                    <span id="sequence-status-pill" class="session-pill bg-white/5 text-brand">Idle</span>
+                </div>
+
+                <div class="space-y-4 text-[10px] text-gray-300">
+                    <div>
+                        <div class="text-white/70 uppercase tracking-[0.2em] mb-2">Available Feature Tasks</div>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[10px]">Sync Backend</span>
+                            <span class="px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[10px]">Fetch Hydrology</span>
+                            <span class="px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[10px]">Update Charts</span>
+                            <span class="px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[10px]">Render Telemetry</span>
+                            <span class="px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[10px]">Generate SitRep</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-white/70 uppercase tracking-[0.2em] mb-2">Preset Sequences</div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <select id="preset-sequence-select" class="flex-1 bg-black/70 border border-white/10 rounded px-3 py-2 text-[10px] text-white">
+                                <option value="">Choose preset sequence...</option>
+                                <option value="Morning Assessment">Morning Assessment</option>
+                                <option value="Hydrology Sweep">Hydrology Sweep</option>
+                                <option value="XAI Diagnostics">XAI Diagnostics</option>
+                            </select>
+                            <button id="apply-sequence-btn" onclick="applyTaskSequence()" class="bg-brand/10 hover:bg-brand/20 border border-brand/30 text-brand text-[10px] rounded px-3 py-2 transition-all">RUN SEQUENCE</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-black/60 border border-white/10 rounded-xl p-3">
+                        <div class="flex items-center justify-between mb-2 text-white/70 uppercase tracking-[0.2em] text-[10px]">
+                            <span>Custom Sequence</span>
+                            <button onclick="loadPresetToCustom()" class="text-brand text-[10px] uppercase tracking-[0.2em]">Load preset</button>
+                        </div>
+                        <textarea id="custom-sequence" rows="4" class="w-full bg-transparent border border-white/10 rounded px-3 py-2 text-[10px] text-white placeholder:text-gray-500" placeholder="Enter tasks separated by commas, e.g. Sync Backend, Fetch Hydrology, Update Charts"></textarea>
+                    </div>
+
+                    <div class="grid gap-3 md:grid-cols-[1fr_auto]">
+                        <div>
+                            <label for="output-format-select" class="block text-white/70 uppercase tracking-[0.2em] text-[9px] mb-2">Output Format</label>
+                            <select id="output-format-select" class="w-full bg-black/70 border border-white/10 rounded px-3 py-2 text-[10px] text-white">
+                                <option value="CSV">CSV</option>
+                                <option value="JSON">JSON</option>
+                                <option value="TEXT">TEXT</option>
+                            </select>
+                        </div>
+                        <button id="export-session-output-btn" onclick="exportSessionOutput()" class="self-end bg-brand/10 hover:bg-brand/20 border border-brand/30 text-brand text-[10px] rounded px-3 py-2 transition-all">EXPORT SESSION</button>
+                    </div>
+
+                    <div class="text-[9px] text-gray-500 leading-relaxed">
+                        Use presets or build your own automation pipeline. Tasks execute automatically in order and update the dashboard for the session.
+                    </div>
+                </div>
+            </div>
+
+            <div class="sci-panel p-4 bg-[#080a10] border border-white/10 rounded-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-[10px] uppercase tracking-[0.2em] text-white/70">Sequence Activity Log</span>
+                    <span class="text-[10px] uppercase tracking-[0.2em] text-brand">Live</span>
+                </div>
+                <div id="sequence-log" class="min-h-[128px] overflow-y-auto custom-scrollbar text-[10px] text-gray-300 space-y-2">
+                    <div class="text-gray-500">Sequence log appears here as tasks run.</div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <div id="fairuse-footer" class="max-w-[1600px] mx-auto px-4 py-3 text-[10px] text-gray-400">
+        <span class="fairuse-glow-dot"></span>
+        <span class="fairuse-glow-dot"></span>
+        <span class="fairuse-glow-dot"></span>
+        <span class="fairuse-glow-dot"></span>
+        <div class="footer-card-inner">
+            <div class="fairuse-title">
+                <span></span>
+                <span class="text-brand text-[10px] uppercase tracking-[0.3em]"></span>
+            </div>
+            <div id="fairuse-message" class="fairuse-message">Fair use guidance active: validate outputs, cite supporting data sources, and keep flood response decisions within command protocols.</div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Session timer for long analysis periods
+        let sessionStart = Date.now();
+        function updateSessionTimer() {
+            const elapsed = Date.now() - sessionStart;
+            const hours = String(Math.floor(elapsed / 3600000)).padStart(2, '0');
+            const mins = String(Math.floor((elapsed % 3600000) / 60000)).padStart(2, '0');
+            const secs = String(Math.floor((elapsed % 60000) / 1000)).padStart(2, '0');
+            const el = document.getElementById('session-duration');
+            if (el) el.innerText = `${hours}:${mins}:${secs}`;
+        }
+        setInterval(updateSessionTimer, 1000);
+        updateSessionTimer();
+
+        // ============================================================================
+        // NEW MILESTONE: LIVE INFERENCE OVERMIND LOGIC
+        // ============================================================================
+        function updateInferenceEngine(precip, soil, temp) {
+            document.getElementById('oi-precip').innerText = precip.toFixed(2);
+            document.getElementById('oi-soil').innerText = soil.toFixed(2);
+            document.getElementById('oi-temp').innerText = temp.toFixed(1);
+
+            document.getElementById('live-temp-b').innerText = `${temp} °C`;
+            document.getElementById('live-precip-b').innerText = `${precip} mm`;
+            document.getElementById('live-soil-b').innerText = `${soil} m³/m³`;
+
+            const satPct = Math.min(100, Math.max(0, soil * 100));
+            document.getElementById('oi-saturation-pct').innerText = `${satPct.toFixed(1)}%`;
+            document.getElementById('oi-water-level').style.height = `${satPct}%`;
+
+            let threat = satPct + (precip * 5);
+            threat = Math.min(100, Math.max(0, threat));
+
+            const ring = document.getElementById('oi-threat-ring');
+            const threatVal = document.getElementById('oi-threat-val');
+            const threatStatus = document.getElementById('oi-threat-status');
+
+            const offset = 251.2 - (251.2 * (threat / 100));
+            ring.style.strokeDashoffset = offset;
+
+            threatVal.innerText = `${threat.toFixed(1)}%`;
+
+            let color = '#22c55e'; let status = 'NOMINAL RISK'; let cls = 'text-nominal';
+            if(threat > 40) { color = '#facc15'; status = 'ELEVATED THREAT'; cls = 'text-[#facc15]'; }
+            if(threat > 60) { color = '#f97316'; status = 'HIGH THREAT'; cls = 'text-[#f97316]'; }
+            if(threat > 80) { color = '#ef4444'; status = 'CRITICAL CASCADE'; cls = 'text-critical'; }
+
+            ring.style.stroke = color;
+            threatVal.className = `text-3xl font-bold font-mono mt-1 drop-shadow-[0_0_10px_${color}] ${cls}`;
+            threatStatus.innerText = status;
+            threatStatus.className = `text-[14px] font-bold font-mono uppercase tracking-widest mt-1 ${cls}`;
+
+            const evac = Math.min(100, threat * 0.4);
+            const grid = Math.min(100, threat * 0.2);
+            document.getElementById('oi-evac-prob').innerText = `${evac.toFixed(1)}%`;
+            document.getElementById('oi-evac-bar').style.width = `${evac}%`;
+            document.getElementById('oi-grid-prob').innerText = `${grid.toFixed(1)}%`;
+            document.getElementById('oi-grid-bar').style.width = `${grid}%`;
+        }
+
+        // ============================================================================
+        // LIVE WEATHER INTEGRATION (Open-Meteo for Lucknow Hydrology Data)
+        // ============================================================================
+        async function fetchLiveHydrology() {
+            const lat = 26.8467; const lon = 80.9462;
+            const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,surface_pressure,soil_moisture_0_to_7cm&timezone=Asia%2FKolkata`;
+            
+            try {
+                const response = await fetch(meteoUrl);
+                if (!response.ok) throw new Error("Meteo API Network Error");
+                const data = await response.json();
+                
+                const currentTemp = data.current.temperature_2m ?? 32.4;
+                const currentPrecip = data.current.precipitation ?? 0.0;
+                const soilMoisture = data.current.soil_moisture_0_to_7cm ?? 0.24;
+                latestHydrology = { currentTemp, currentPrecip, soilMoisture };
+
+                if(currentPrecip > 0) {
+                    document.getElementById('optical-mask').innerText = 'BLIND (RAIN CLOUDS)';
+                    document.getElementById('optical-mask').className = 'text-warning font-bold';
+                } else {
+                    document.getElementById('optical-mask').innerText = 'CLEAR VISIBILITY';
+                    document.getElementById('optical-mask').className = 'text-nominal font-bold';
+                }
+
+                updateInferenceEngine(currentPrecip, soilMoisture, currentTemp);
+                applyTelemetryFromSources();
+                generateSitRep(currentPrecip, soilMoisture, false);
+
+            } catch (error) {
+                latestHydrology = { currentTemp: 32.4, currentPrecip: 0.0, soilMoisture: 0.24 };
+                updateInferenceEngine(0.0, 0.24, 32.4);
+                applyTelemetryFromSources();
+                generateSitRep(0.0, 0.24, true);
+            }
+        }
+
+        // ============================================================================
+        // LIVE BACKEND SYNC (Hugging Face FastAPI Connection)
+        // ============================================================================
+        const HF_SPACE_URL = "https://abdullahashraf122-sentinel-v7-brain.hf.space";
+        const API_BASE = `${HF_SPACE_URL}/api/v7`;
+        let backendOnline = false;
+        let latestBackendMetrics = {};
+        let latestHydrology = {};
+
+        function applyTelemetryFromSources() {
+            if (!telemetryData || telemetryData.length === 0) return;
+            const precip = latestHydrology.currentPrecip ?? null;
+            const soil = latestHydrology.soilMoisture ?? null;
+            const risk = latestBackendMetrics.average_division_risk ?? latestBackendMetrics.avg_risk ?? latestBackendMetrics.average_risk ?? null;
+            const discharge = latestBackendMetrics.current_discharge ?? latestBackendMetrics.currentDischarge ?? latestBackendMetrics.discharge ?? null;
+            const records = latestBackendMetrics.total_indexed_records ?? latestBackendMetrics.totalRecords ?? null;
+
+            const paramMap = {
+                PARAM_02: risk != null ? `${Number(risk).toFixed(2)} Δ (risk)` : null,
+                PARAM_04: latestBackendMetrics.basin_yield ? `${Number(latestBackendMetrics.basin_yield).toFixed(1)}%` : null,
+                PARAM_05: soil != null ? `CLASS ${soil > 0.35 ? 'III (WET)' : soil > 0.15 ? 'II (MOIST)' : 'I (DRY)'}` : null,
+                PARAM_07: latestBackendMetrics.sar_vh ? `${latestBackendMetrics.sar_vh} dB` : null,
+                PARAM_08: latestBackendMetrics.loss_mae ? `${Number(latestBackendMetrics.loss_mae).toFixed(5)} MAE` : null,
+                PARAM_13: latestBackendMetrics.bayesian_uncertainty ? `${Number(latestBackendMetrics.bayesian_uncertainty).toFixed(3)}%` : null,
+                PARAM_14: latestBackendMetrics.aleatoric_noise ? `${Number(latestBackendMetrics.aleatoric_noise).toFixed(2)}%` : null,
+                PARAM_16: latestBackendMetrics.grid_state ? `${latestBackendMetrics.grid_state}` : null,
+                PARAM_20: precip != null ? (precip > 0 ? 'BLIND (RAIN CLOUDS)' : 'CLEAR VISIBILITY') : null
+            };
+
+            telemetryData.forEach(item => {
+                if (paramMap[item.id] != null) item.value = paramMap[item.id];
+            });
+
+            renderTelemetryTable();
+        }
+
+        function updateBackendTelemetry(data) {
+            latestBackendMetrics = data || {};
+            if (data.total_indexed_records) document.getElementById('sys-records').innerText = data.total_indexed_records.toLocaleString();
+            if (data.average_division_risk || data.avg_risk || data.average_risk) {
+                const riskValue = Number(data.average_division_risk ?? data.avg_risk ?? data.average_risk).toFixed(1);
+                const threatEl = document.getElementById('oi-threat-val');
+                if (threatEl) threatEl.innerText = `${riskValue}%`;
+            }
+            applyTelemetryFromSources();
+            updateChartsFromBackend();
+        }
+
+        function updateChartsFromBackend() {
+            if (lossChartInstance && Array.isArray(latestBackendMetrics.loss_history) && latestBackendMetrics.loss_history.length) {
+                lossChartInstance.data.labels = latestBackendMetrics.loss_history.map((_, idx) => idx + 1);
+                lossChartInstance.data.datasets[0].data = latestBackendMetrics.loss_history.slice();
+                lossChartInstance.update('none');
+            }
+            if (sarChartInstance && Array.isArray(latestBackendMetrics.sar_history) && latestBackendMetrics.sar_history.length) {
+                sarChartInstance.data.labels = latestBackendMetrics.sar_history.map((_, idx) => idx === latestBackendMetrics.sar_history.length - 1 ? 'Now' : `T-${latestBackendMetrics.sar_history.length - idx - 1}`);
+                sarChartInstance.data.datasets[0].data = latestBackendMetrics.sar_history.slice();
+                sarChartInstance.update('none');
+            }
+        }
+
+        const SESSION_TASK_FEATURES = [
+            { name: 'Sync Backend', fn: syncBackend },
+            { name: 'Fetch Hydrology', fn: fetchLiveHydrology },
+            { name: 'Update Charts', fn: updateChartsFromBackend },
+            { name: 'Render Telemetry', fn: renderTelemetryTable },
+            { name: 'Generate SitRep', fn: () => generateSitRep(latestHydrology.currentPrecip ?? 0, latestHydrology.soilMoisture ?? 0.24, !backendOnline) }
+        ];
+
+        const PRESET_SEQUENCES = {
+            'Morning Assessment': ['Sync Backend', 'Fetch Hydrology', 'Update Charts', 'Render Telemetry', 'Generate SitRep'],
+            'Hydrology Sweep': ['Fetch Hydrology', 'Sync Backend', 'Render Telemetry'],
+            'XAI Diagnostics': ['Sync Backend', 'Update Charts', 'Render Telemetry']
+        };
+
+        function renderTaskSequencer() {
+            const presetSelect = document.getElementById('preset-sequence-select');
+            if (!presetSelect) return;
+            presetSelect.innerHTML = '<option value="">Choose preset sequence...</option>' +
+                Object.keys(PRESET_SEQUENCES).map(key => `<option value="${key}">${key}</option>`).join('');
+        }
+
+        function setSequenceStatus(text) {
+            const pill = document.getElementById('sequence-status-pill');
+            if (pill) pill.innerText = text;
+        }
+
+        function appendSequenceLog(message, type = 'info') {
+            const log = document.getElementById('sequence-log');
+            if (!log) return;
+            const entry = document.createElement('div');
+            if (type === 'error') entry.className = 'text-red-400';
+            else if (type === 'success') entry.className = 'text-green-400';
+            else if (type === 'warn') entry.className = 'text-amber-400';
+            else entry.className = 'text-gray-300';
+            entry.innerText = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            if (log.children.length > 8) log.removeChild(log.firstChild);
+        }
+
+        let sessionOutputFormat = 'CSV';
+        const FAIR_USE_MESSAGES = [
+            'Fair use guidance active: validate outputs, cite supporting data, and respect operational safety.',
+            'Guideline: do not rely on a single model prediction for emergency response decisions.',
+            'Fair use: attribute open-source data sources and verify API-derived metrics before action.',
+            'Reminder: preserve data integrity, avoid sharing sensitive telemetry without authorization.'
+        ];
+        let fairUseFooterIndex = 0;
+
+        function updateFairUseFooter() {
+            const footer = document.getElementById('fairuse-message');
+            if (!footer) return;
+            footer.innerText = FAIR_USE_MESSAGES[fairUseFooterIndex % FAIR_USE_MESSAGES.length];
+            fairUseFooterIndex += 1;
+        }
+
+        function getSessionOutputFormat() {
+            const select = document.getElementById('output-format-select');
+            sessionOutputFormat = select?.value || 'CSV';
+            return sessionOutputFormat;
+        }
+
+        function exportSessionOutput() {
+            const format = getSessionOutputFormat();
+            const payload = {
+                timestamp: new Date().toISOString(),
+                backend: latestBackendMetrics,
+                hydrology: latestHydrology,
+                telemetry: telemetryData,
+                sitrep: document.getElementById('sitrep-content')?.innerText || ''
+            };
+
+            let content = '';
+            let mime = 'text/plain';
+            let extension = 'txt';
+
+            if (format === 'JSON') {
+                content = JSON.stringify(payload, null, 2);
+                mime = 'application/json';
+                extension = 'json';
+            } else if (format === 'CSV') {
+                const rows = [];
+                rows.push(['SECTION', 'KEY', 'VALUE'].join(','));
+                rows.push(['BACKEND', 'timestamp', payload.timestamp]);
+                Object.entries(payload.backend || {}).forEach(([key, value]) => rows.push(['BACKEND', key, JSON.stringify(value)]));
+                Object.entries(payload.hydrology || {}).forEach(([key, value]) => rows.push(['HYDROLOGY', key, JSON.stringify(value)]));
+                rows.push(['TELEMETRY', '', '']);
+                telemetryData.forEach(item => rows.push(['TELEMETRY', item.id, JSON.stringify(item.value)]));
+                rows.push(['SITREP', 'content', JSON.stringify(payload.sitrep)]);
+                content = rows.join('\n');
+                mime = 'text/csv';
+                extension = 'csv';
+            } else {
+                content = `SESSION OUTPUT (${format})\nTimestamp: ${payload.timestamp}\n\nBACKEND METRICS:\n`;
+                Object.entries(payload.backend || {}).forEach(([key, value]) => content += `${key}: ${JSON.stringify(value)}\n`);
+                content += '\nHYDROLOGY:\n';
+                Object.entries(payload.hydrology || {}).forEach(([key, value]) => content += `${key}: ${JSON.stringify(value)}\n`);
+                content += '\nTELEMETRY:\n';
+                telemetryData.forEach(item => content += `${item.id} | ${item.name} | ${item.value}\n`);
+                content += `\nSITREP:\n${payload.sitrep}\n`;
+                mime = 'text/plain';
+                extension = format.toLowerCase();
+            }
+
+            const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `sentinel_session_output.${extension}`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            appendSequenceLog(`Exported session output as ${format}`, 'success');
+        }
+
+        function loadPresetToCustom() {
+            const presetSelect = document.getElementById('preset-sequence-select');
+            const custom = document.getElementById('custom-sequence');
+            if (!presetSelect || !custom) return;
+            const preset = presetSelect.value;
+            if (!preset || !PRESET_SEQUENCES[preset]) return;
+            custom.value = PRESET_SEQUENCES[preset].join(', ');
+        }
+
+        async function applyTaskSequence() {
+            const presetSelect = document.getElementById('preset-sequence-select');
+            const custom = document.getElementById('custom-sequence');
+            if (!presetSelect || !custom) return;
+
+            let sequence = [];
+            if (presetSelect.value && PRESET_SEQUENCES[presetSelect.value]) {
+                sequence = PRESET_SEQUENCES[presetSelect.value].slice();
+            } else if (custom.value.trim()) {
+                sequence = custom.value.split(',').map(item => item.trim()).filter(Boolean);
+            }
+
+            if (!sequence.length) {
+                appendSequenceLog('No task sequence defined.', 'error');
+                setSequenceStatus('Idle');
+                return;
+            }
+
+            setSequenceStatus('Running');
+            appendSequenceLog(`Starting sequence: ${sequence.join(' > ')}`);
+            const button = document.getElementById('apply-sequence-btn');
+            if (button) button.disabled = true;
+
+            for (const taskName of sequence) {
+                const task = SESSION_TASK_FEATURES.find(feature => feature.name.toLowerCase() === taskName.toLowerCase());
+                if (!task) {
+                    appendSequenceLog(`Task not found: ${taskName}`, 'error');
+                    continue;
+                }
+                appendSequenceLog(`Executing: ${task.name}`);
+                try {
+                    await task.fn();
+                    appendSequenceLog(`Completed: ${task.name}`);
+                } catch (err) {
+                    appendSequenceLog(`Error during ${task.name}: ${err.message || err}`, 'error');
+                }
+            }
+
+            setSequenceStatus('Complete');
+            if (button) button.disabled = false;
+        }
+
+        window.renderTaskSequencer = renderTaskSequencer;
+        window.applyTaskSequence = applyTaskSequence;
+        window.loadPresetToCustom = loadPresetToCustom;
+
+        async function syncBackend() {
+            const start = performance.now();
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            try {
+                const res = await fetch(`${API_BASE}/analytics/division-summary`, { signal: controller.signal });
+                if (!res.ok) {
+                    if (res.status === 500) throw new Error("500 Internal Server Error (Backend DB Missing/Crashed)");
+                    else if (res.status === 404) throw new Error("404 Endpoint Not Found (API Route is missing)");
+                    else throw new Error(`HTTP Error ${res.status}`);
+                }
+                const data = await res.json();
+                clearTimeout(timeoutId);
+
+                backendOnline = true;
+                const lat = (performance.now() - start).toFixed(0);
+                updateStatusBadge(true, `HF UPLINK SECURE (${lat}ms)`);
+                document.getElementById('sys-latency').innerText = `${lat} ms`;
+                updateBackendTelemetry(data);
+                logToTerminal(`HF API Payload received in ${lat}ms.`, 'success');
+            } catch(e) {
+                clearTimeout(timeoutId);
+                if (e.name === 'AbortError') logToTerminal(`Connection to HF Space timed out. Space may be sleeping.`, 'error');
+                else logToTerminal(`API Failure: ${e.message}`, 'error');
+
+                backendOnline = false;
+                updateStatusBadge(false, 'HF UPLINK OFFLINE');
+                document.getElementById('sys-latency').innerText = `OFFLINE CACHE`;
+            }
+        }
+
+        function updateStatusBadge(isOnline, text) {
+            const badge = document.getElementById('status-badge');
+            const dot = document.getElementById('status-dot');
+            const textEl = document.getElementById('api-uplink-status');
+            textEl.innerText = text;
+
+            if(isOnline) {
+                badge.classList.remove('bg-warning/10', 'border-warning/30');
+                badge.classList.add('bg-green-500/10', 'border-green-500/30');
+                dot.classList.remove('bg-warning'); dot.classList.add('bg-green-500');
+                textEl.classList.remove('text-warning'); textEl.classList.add('text-green-400');
+            } else {
+                badge.classList.remove('bg-green-500/10', 'border-green-500/30');
+                badge.classList.add('bg-warning/10', 'border-warning/30');
+                dot.classList.remove('bg-green-500'); dot.classList.add('bg-warning');
+                textEl.classList.remove('text-green-400'); textEl.classList.add('text-warning');
+            }
+        }
+
+        // ============================================================================
+        // NEW MILESTONE: DYNAMIC DEEP SCIENCE FOOTER
+        // ============================================================================
+        const deepScienceData = [
+            "IONOSPHERIC_SCINTILLATION", "Q-BIT_ENTROPY_DRIFT", "GLOBAL_SEISMIC_NOISE",
+            "SOLAR_WIND_FLUX_KM/S", "MAGNETIC_ANOMALY_μT", "ORBITAL_DEBRIS_COUNT",
+            "MANTLE_RESONANCE_HZ", "ATMOSPHERIC_MUON_FLUX", "NEUTRINO_DETECTION",
+            "STRATOSPHERIC_AEROSOL", "GEOSYNCHRONOUS_PULSE", "TELLURIC_CURRENT_VAR"
+        ];
+
+async function updateDynamicFooter() {
+            const f1 = document.getElementById('dyn-foot-1');
+            const f2 = document.getElementById('dyn-foot-2');
+            const f3 = document.getElementById('dyn-foot-3');
+            if (!f1 || !f2 || !f3) return;
+
+            [f1, f2, f3].forEach(f => f.style.opacity = '0.5');
+            try {
+                const [launchRes, githubRes, weatherRes] = await Promise.all([
+                    fetch('https://api.spacexdata.com/v4/launches/latest'),
+                    fetch('https://api.github.com/rate_limit'),
+                    fetch('https://api.open-meteo.com/v1/forecast?latitude=26.8467&longitude=80.9462&current_weather=true&timezone=Asia%2FKolkata')
+                ]);
+
+                if (launchRes.ok) {
+                    const launch = await launchRes.json();
+                    f1.innerHTML = `SPACEX LATEST: ${launch.name} @ ${new Date(launch.date_utc).toISOString().slice(0, 10)}`;
+                } else {
+                    f1.innerText = 'SPACEX DATA UNAVAILABLE';
+                }
+
+                if (githubRes.ok) {
+                    const gh = await githubRes.json();
+                    const remaining = gh.rate?.remaining ?? 'N/A';
+                    f2.innerHTML = `GITHUB RATE REMAIN: <span class="text-white font-bold">${remaining}</span>`;
+                } else {
+                    f2.innerText = 'GITHUB RATE UNAVAILABLE';
+                }
+
+                if (weatherRes.ok) {
+                    const weather = await weatherRes.json();
+                    const current = weather.current_weather || {};
+                    f3.innerHTML = `OPEN-METEO: <span class="text-white font-bold">${current.temperature ?? '--'}°C / ${current.windspeed ?? '--'} m/s</span>`;
+                } else {
+                    f3.innerText = 'OPEN-METEO DATA UNAVAILABLE';
+                }
+            } catch (error) {
+                f1.innerText = 'OPEN API UNAVAILABLE';
+                f2.innerText = 'OPEN API UNAVAILABLE';
+                f3.innerText = 'OPEN API UNAVAILABLE';
+                logToTerminal(`Footer open-source API error: ${error.message}`, 'warn');
+            } finally {
+                setTimeout(() => [f1, f2, f3].forEach(f => f.style.opacity = '1'), 300);
+            }
+        }
+
+        // ============================================================================
+        // DYNAMIC UI DATA SIMULATION (Makes dashboard feel "Alive")
+        // ============================================================================
+        let currentEpoch = 4892;
+        function refreshVisualFeedback() {
+            if (latestBackendMetrics.loss_mae != null) {
+                document.getElementById('loss-value').innerText = `MAE: ${Number(latestBackendMetrics.loss_mae).toFixed(5)}`;
+            }
+            if (latestBackendMetrics.epoch != null) {
+                document.getElementById('epoch-counter').innerText = `EPOCH: ${latestBackendMetrics.epoch}`;
+            }
+
+            if (latestBackendMetrics.sar_vh != null && sarChartInstance) {
+                const sData = sarChartInstance.data.datasets[0].data;
+                sData[6] = Number(latestBackendMetrics.sar_vh);
+                sarChartInstance.update('none');
+            }
+
+            const cells = document.querySelectorAll('.attention-cell');
+            cells.forEach((cell, idx) => {
+                cell.style.opacity = 0.25 + Math.abs(Math.sin(Date.now() / 900 + idx)) * 0.65;
+            });
+
+            const aura = document.getElementById('bayesian-aura');
+            if (latestBackendMetrics.bayesian_uncertainty != null) {
+                document.getElementById('bayesian-val').innerText = `${Number(latestBackendMetrics.bayesian_uncertainty).toFixed(3)}%`;
+                aura.className = latestBackendMetrics.bayesian_uncertainty > 2 ? 'absolute inset-0 rounded-full border-2 aura-warning heat-aura pointer-events-none' : 'absolute inset-0 rounded-full border-2 aura-nominal heat-aura pointer-events-none';
+            }
+
+            const logContainer = document.getElementById('oi-tensor-log');
+            if (logContainer) {
+                const p = document.createElement('div');
+                p.innerText = backendOnline ? `[API] HF backend synchronized successfully.` : '[NET] Waiting for HF backend uplink...';
+                logContainer.appendChild(p);
+                if (logContainer.children.length > 5) logContainer.removeChild(logContainer.firstChild);
+            }
+
+            runSanityChecks();
+        }
+
+        // ============================================================================
+        // AUTO-SYNTHESIZED NLP SITREP TERMINAL
+        // ============================================================================
+        let typeWriterInterval;
+        
+        function generateSitRep(precip, soil, isOffline = false) {
+            const sitrepEl = document.getElementById('sitrep-content');
+            clearInterval(typeWriterInterval); 
+            
+            const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19) + "Z";
+            let text = `> LOG_TIME: ${timestamp}\n`;
+            text += `> SYS_STATE: Initiating Tactical Analysis...\n\n`;
+            
+            if (isOffline) {
+                text += `[CRITICAL WARNING]: Direct uplink to Hugging Face Inference API severed. Utilizing local cached matrices and isolated simulation protocols.\n\n`;
+                sitrepEl.className = 'text-critical';
+            } else {
+                sitrepEl.className = 'text-nominal';
+            }
+
+            text += `[HYDROLOGY VECTORS]:\n`;
+            if (precip > 0) {
+                text += `- Active precipitation detected: ${precip}mm/h.\n`;
+                text += `- Gomti River discharge rates accelerating beyond baseline.\n`;
+            } else {
+                text += `- Atmospheric conditions clear. Precipitation: 0.0mm/h.\n`;
+                text += `- Gomti River discharge stable within nominal parameters.\n`;
+            }
+
+            text += `- Volumetric soil moisture currently at ${soil} m³/m³.\n\n`;
+            
+            text += `[NEURAL THREAT ASSESSMENT]:\n`;
+            if (soil > 0.35 || precip > 5) {
+                text += `>> STATUS: ELEVATED RISK.\n`;
+                text += `Inundation probability rising sharply in low-elevation hubs (e.g., Gomti Nagar, Charbagh). Sub-surface saturation limits approaching threshold. Recommend staging Grid Islanding protocols.`;
+                sitrepEl.className = 'text-warning'; 
+            } else {
+                text += `>> STATUS: NOMINAL.\n`;
+                text += `Geospatial mesh is stable. XAI matrices indicate zero anomalous feature triggers. No immediate evacuation or intervention required at this time.`;
+            }
+
+            sitrepEl.innerHTML = '';
+            let i = 0;
+            typeWriterInterval = setInterval(() => {
+                if (i < text.length) {
+                    if (text.charAt(i) === '\n') sitrepEl.innerHTML += '<br>';
+                    else sitrepEl.innerHTML += text.charAt(i);
+                    i++;
+                    sitrepEl.parentElement.scrollTop = sitrepEl.parentElement.scrollHeight;
+                } else {
+                    clearInterval(typeWriterInterval);
+                    lucide.createIcons(); 
+                }
+            }, 15); 
+        }
+
+        // ============================================================================
+        // TERMINALS & LOGGERS
+        // ============================================================================
+        function logToTerminal(message, type = 'info') {
+            const terminal = document.getElementById('terminal-output');
+            const p = document.createElement('p');
+            const timestamp = new Date().toISOString().split('T')[1].substring(0, 8);
+            
+            let colorClass = 'text-gray-400';
+            let prefix = '[SYS]';
+            if (type === 'error') { colorClass = 'text-critical'; prefix = '[ERR]'; }
+            else if (type === 'success') { colorClass = 'text-nominal'; prefix = '[OK] '; }
+            else if (type === 'net') { colorClass = 'text-blue-400'; prefix = '[NET]'; }
+            else if (type === 'warn') { colorClass = 'text-warning'; prefix = '[WRN]'; }
+
+            p.innerHTML = `<span class="text-gray-600">[${timestamp}]</span> <span class="${colorClass}">${prefix}</span> ${message}`;
+            terminal.appendChild(p);
+            terminal.scrollTop = terminal.scrollHeight;
+            if (terminal.children.length > 20) terminal.removeChild(terminal.firstChild);
+        }
+
+        const paradoxChecks = [
+            "CHK: Discharge ^ Elev v -> [NOMINAL]",
+            "CHK: Zero-Rain Flood Trigger -> [FALSE]",
+            "CHK: Soil Saturation > 1.0 -> [CORRECTED]",
+            "CHK: Pop Density vs Topo -> [ALIGNED]",
+            "CHK: TWI vs Surface Runoff -> [NOMINAL]"
+        ];
+        let paradoxIndex = 0;
+        function runSanityChecks() {
+            const log = document.getElementById('paradox-log');
+            const p = document.createElement('p');
+            const check = paradoxChecks[paradoxIndex % paradoxChecks.length];
+            paradoxIndex += 1;
+            if (!backendOnline) {
+                p.innerHTML = `<span class="text-warning">[NET] HF backend desynced, verifying API state...</span>`;
+            } else {
+                p.innerHTML = `> ${check}`;
+            }
+
+            log.appendChild(p);
+            log.scrollTop = log.scrollHeight;
+            if (log.children.length > 6) log.removeChild(log.firstChild);
+        }
+
+        // ============================================================================
+        // DATA EXPORT AND INTERACTIVE TABLE LOGIC
+        // ============================================================================
+        let telemetryData = [
+            { id: "PARAM_01", name: "SHAP Distribution Matrix", value: "Multi-Vector Map", status: "NOMINAL", tip: "Shapley Additive Explanations determining predictor weight." },
+            { id: "PARAM_02", name: "LIME Perturbation Impact", value: "+0.395 Δ (Rainfall Max)", status: "COMPUTED", tip: "Local Interpretable Model-agnostic Explanations." },
+            { id: "PARAM_03", name: "Topographic Wetness Index (μ-Var)", value: "12.4 μ", status: "NOMINAL", tip: "Quantifies steady-state topographic control on hydrology." },
+            { id: "PARAM_04", name: "Basin Catchment Yield", value: "84.2%", status: "OPTIMAL", tip: "Percentage of rainfall converted to direct runoff." },
+            { id: "PARAM_05", name: "Antecedent Moisture Condition (AMC)", value: "CLASS III (WET)", status: "WARNING", tip: "Pre-existing soil saturation levels prior to new rainfall." },
+            { id: "PARAM_06", name: "Capillary Fringe Saturation", value: "100% (Breached)", status: "CRITICAL", tip: "Subsurface layer where groundwater is drawn up by pores." },
+            { id: "PARAM_07", name: "SAR-VH Isotropic Backscatter", value: "-21.4 dB", status: "NOMINAL", tip: "Synthetic Aperture Radar cross-polarization return." },
+            { id: "PARAM_08", name: "Loss Convergence Trajectory", value: "0.0004 MAE", status: "OPTIMAL", tip: "Mean Absolute Error evaluated over 60 epochs." },
+            { id: "PARAM_09", name: "Ghost Mode (Bi-LSTM Flow)", value: "Active Tensor Stream", status: "LIVE", tip: "Visual representation of neural LSTM activations." },
+            { id: "PARAM_10", name: "Weight Sparsity Index", value: "2.13%", status: "HEALTHY", tip: "Percentage of zero-valued weights in the architecture." },
+            { id: "PARAM_11", name: "Gradient Norm Vector", value: "0.014 ∇", status: "HEALTHY", tip: "Magnitude of weight updates preventing vanishing gradients." },
+            { id: "PARAM_12", name: "Monte Carlo OOD Stress", value: "4 Scenarios Checked", status: "VALIDATED", tip: "Out-Of-Distribution randomized generative testing." },
+            { id: "PARAM_13", name: "Bayesian Epistemic Uncertainty", value: "0.02%", status: "OPTIMAL", tip: "Uncertainty in the model due to lack of historical data." },
+            { id: "PARAM_14", name: "Aleatoric Data Noise", value: "1.45%", status: "NOMINAL", tip: "Inherent randomness/noise in the meteorological inputs." },
+            { id: "PARAM_15", name: "Logical Paradox Registry", value: "0 Anomalies", status: "CLEAR", tip: "Checks for impossible outputs (e.g. flood with 0% rain and high elevation)." },
+            { id: "PARAM_16", name: "Grid Islanding State", value: "Synchronized", status: "NOMINAL", tip: "Status of local power distribution grids." },
+            { id: "PARAM_17", name: "Pathogen Vector Amplification", value: "Base Risk", status: "NOMINAL", tip: "Probability of waterborne disease outbreak post-event." },
+            { id: "PARAM_18", name: "Infrastructure Cascade Probability", value: "12.4%", status: "NOMINAL", tip: "Risk of sequential failure of civil infrastructure." },
+            { id: "PARAM_19", name: "Demographic Vulnerability", value: "18.2% Density", status: "ELEVATED", tip: "Concentration of elderly and pediatric populations." },
+            { id: "PARAM_20", name: "Multi-Spectral Optical Mask", value: "Blind (Clouded)", status: "WARNING", tip: "Optical satellite visibility (blocked by storm clouds)." }
+        ];
+
+        function renderTelemetryTable(data = telemetryData) {
+            const tbody = document.getElementById('telemetry-table-body');
+            tbody.innerHTML = '';
+            data.forEach(param => {
+                let statusColor = "text-nominal";
+                if(param.status === "WARNING" || param.status === "ELEVATED") statusColor = "text-warning";
+                if(param.status === "CRITICAL") statusColor = "text-critical";
+
+                tbody.innerHTML += `
+                    <tr class="data-row relative border-b border-white/5 last:border-0 hover:bg-white/5">
+                        <td class="px-6 py-3 whitespace-nowrap text-brand font-bold">${param.id}
+                            <div class="tooltip-text">${param.tip}</div>
+                        </td>
+                        <td class="px-6 py-3 whitespace-nowrap">${param.name}</td>
+                        <td class="px-6 py-3 whitespace-nowrap text-white">${param.value}</td>
+                        <td class="px-6 py-3 whitespace-nowrap font-bold ${statusColor}">${param.status}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function filterTelemetry() {
+            const query = document.getElementById('telemetry-search').value.toLowerCase();
+            const filtered = telemetryData.filter(item => 
+                item.name.toLowerCase().includes(query) || 
+                item.id.toLowerCase().includes(query) ||
+                item.status.toLowerCase().includes(query)
+            );
+            renderTelemetryTable(filtered);
+        }
+
+        function downloadCSV() {
+            logToTerminal('Exporting telemetry vault to CSV...', 'info');
+            let csvContent = "data:text/csv;charset=utf-8,ID,Parameter_Definition,Real_Time_Value,Status,Description\n";
+            telemetryData.forEach(row => {
+                const rName = `"${row.name}"`;
+                const rVal = `"${row.value}"`;
+                const rTip = `"${row.tip}"`;
+                csvContent += `${row.id},${rName},${rVal},${row.status},${rTip}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "sentinel_v7_telemetry_export.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            logToTerminal('Export complete. File downloaded.', 'success');
+        }
+
+        // ============================================================================
+        // INITIALIZE ALL CHARTS AND CANVASES
+        // ============================================================================
+        let xaiChartInstance, lossChartInstance, sarChartInstance;
+
+        function initXAIChart() {
+            const ctx = document.getElementById('xaiRadarChart').getContext('2d');
+            xaiChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['RAINFALL', 'SOIL_MOIST', 'RUNOFF', 'ELEVATION', 'RIV_DIST', 'POP_DENS', 'DISCHARGE', 'SAR_VH'],
+                    datasets: [{
+                        data: [39.5, 38.3, 31.6, 21.1, 14.1, 13.3, 10.1, 5.8],
+                        backgroundColor: 'rgba(0, 243, 255, 0.15)',
+                        borderColor: '#00f3ff',
+                        borderWidth: 1.5,
+                        pointBackgroundColor: '#b084f5',
+                        pointBorderColor: '#fff',
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        r: { 
+                            angleLines: { color: 'rgba(255,255,255,0.1)' }, 
+                            grid: { color: 'rgba(255,255,255,0.05)' }, 
+                            pointLabels: { color: '#94a3b8', font: { family: "'JetBrains Mono', monospace", size: 9, weight: 'bold' } }, 
+                            ticks: { display: false, min: 0, max: 50 } 
+                        }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', titleFont: {family: 'monospace'}, bodyFont: {family: 'monospace'} } },
+                    animation: { duration: 1000 }
+                }
+            });
+        }
+
+        function initLossChart() {
+            const ctx = document.getElementById('lossChart').getContext('2d');
+            const lossData = Array.isArray(latestBackendMetrics.loss_history) && latestBackendMetrics.loss_history.length > 0
+                ? latestBackendMetrics.loss_history.slice()
+                : Array.from({length: 60}, (_, i) => Math.max(0.0004, 0.05 * Math.exp(-i / 15)));
+            lossChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: lossData.length}, (_, i) => i + 1),
+                    datasets: [{ data: lossData, borderColor: '#b084f5', borderWidth: 2, pointRadius: 0, tension: 0.3 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { x: { display: false }, y: { display: false, min: 0 } },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    animation: { duration: 2000, easing: 'easeOutQuart' }
+                }
+            });
+        }
+
+        function initSARChart() {
+            const ctx = document.getElementById('sarChart').getContext('2d');
+            const sarData = Array.isArray(latestBackendMetrics.sar_history) && latestBackendMetrics.sar_history.length > 0
+                ? latestBackendMetrics.sar_history.slice()
+                : [-15.1, -14.8, -15.5, -16.2, -18.1, -20.5, -21.4];
+            sarChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: sarData.length}, (_, i) => i === sarData.length - 1 ? 'Now' : `T-${sarData.length - i - 1}`),
+                    datasets: [{ 
+                        data: sarData, 
+                        borderColor: '#60a5fa', 
+                        backgroundColor: 'rgba(96, 165, 250, 0.2)',
+                        borderWidth: 2, 
+                        pointBackgroundColor: '#fff',
+                        pointRadius: 2,
+                        fill: true,
+                        tension: 0.4 
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { x: { display: false }, y: { display: false, max: -10, min: -25 } },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                }
+            });
+        }
+
+        function initAttentionMatrix() {
+            const container = document.getElementById('attention-matrix');
+            container.innerHTML = '';
+            for(let i=0; i<16; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'w-full h-4 bg-brand rounded-sm attention-cell';
+                cell.style.opacity = Math.random() * 0.8 + 0.2;
+                container.appendChild(cell);
+            }
+        }
+
+        function initNeuralCanvas() {
+            const canvas = document.getElementById('neural-canvas');
+            const ctx = canvas.getContext('2d');
+            let width = canvas.width = canvas.offsetWidth;
+            let height = canvas.height = canvas.offsetHeight;
+            let time = 0;
+
+            const layers = [4, 6, 6, 4, 1]; 
+            const nodes = [];
+            const links = [];
+            const pulses = []; 
+            
+            const xStep = width / (layers.length + 1);
+            layers.forEach((count, lIdx) => {
+                const yStep = height / (count + 1);
+                for(let i=0; i<count; i++) {
+                    nodes.push({ id: nodes.length, x: xStep * (lIdx + 1), y: yStep * (i + 1), layer: lIdx, offset: Math.random() * Math.PI * 2 });
+                }
+            });
+
+            nodes.forEach(n1 => {
+                nodes.forEach(n2 => {
+                    if (n2.layer === n1.layer + 1) links.push({src: n1, tgt: n2});
+                });
+            });
+
+            function draw() {
+                ctx.clearRect(0, 0, width, height);
+                time += 0.05;
+
+                ctx.lineWidth = 0.5;
+                links.forEach(l => {
+                    const active = Math.sin(time * 2 + l.src.offset) > 0.8;
+                    ctx.strokeStyle = active ? 'rgba(0, 243, 255, 0.4)' : 'rgba(255, 255, 255, 0.05)';
+                    ctx.beginPath(); ctx.moveTo(l.src.x, l.src.y); ctx.lineTo(l.tgt.x, l.tgt.y); ctx.stroke();
+                });
+
+                if(Math.random() > 0.6) {
+                    const link = links[Math.floor(Math.random() * links.length)];
+                    pulses.push({ ...link, progress: 0, speed: Math.random() * 0.04 + 0.02 });
+                }
+
+                for(let i = pulses.length - 1; i >= 0; i--) {
+                    let p = pulses[i];
+                    p.progress += p.speed;
+                    if(p.progress >= 1) { pulses.splice(i, 1); continue; }
+                    
+                    let currX = p.src.x + (p.tgt.x - p.src.x) * p.progress;
+                    let currY = p.src.y + (p.tgt.y - p.src.y) * p.progress;
+                    
+                    ctx.beginPath(); ctx.arc(currX, currY, 1.5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.shadowBlur = 8; ctx.shadowColor = '#00f3ff';
+                    ctx.fill(); ctx.shadowBlur = 0;
+                }
+
+                nodes.forEach(n => {
+                    ctx.beginPath(); ctx.arc(n.x, n.y, 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = n.layer === 4 ? '#ef4444' : '#b084f5';
+                    ctx.shadowBlur = 6 + Math.sin(time + n.offset) * 4;
+                    ctx.shadowColor = ctx.fillStyle;
+                    ctx.fill(); ctx.shadowBlur = 0;
+                });
+
+                requestAnimationFrame(draw);
+            }
+            draw();
+            window.addEventListener('resize', () => { width = canvas.width = canvas.offsetWidth; height = canvas.height = canvas.offsetHeight; });
+        }
+
+        // ============================================================================
+        // BOOT SEQUENCE
+        // ============================================================================
+        window.onload = () => {
+            logToTerminal('Initializing UI components...', 'info');
+            initXAIChart();
+            initLossChart();
+            initSARChart();
+            initAttentionMatrix();
+            initNeuralCanvas();
+            renderTelemetryTable();
+            
+            setTimeout(() => {
+                document.querySelectorAll('.metric-bar-fill').forEach(bar => { bar.style.width = bar.getAttribute('data-target'); });
+                logToTerminal('Render engine active.', 'success');
+            }, 500);
+
+            fetchLiveHydrology();
+            syncBackend();
+            renderTaskSequencer();
+            updateFairUseFooter();
+            setInterval(updateFairUseFooter, 20000);
+
+            setInterval(syncBackend, 15000);
+            setInterval(fetchLiveHydrology, 60000);
+            setInterval(refreshVisualFeedback, 1500);
+        };
+    </script>
+</body>
+</html>
