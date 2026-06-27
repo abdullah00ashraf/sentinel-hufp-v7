@@ -354,3 +354,8 @@ This document tracks verified architectural iterations, feature additions, and p
 - **Status**: Verified & Integrated into `main`
 - **Timestamp**: `2026-06-22T12:32:58+0530`
 
+### [2026-06-27 19:55 IST] - `feat(radar): implement Lee sigma speckle filter for Sentinel-1 GRD`
+- **Component**: SAR Radar & Geospatial Analysis Engine
+- **Status**: Verified & Integrated into `main`
+- **Timestamp**: `2026-06-27T19:55:32+0530`
+
