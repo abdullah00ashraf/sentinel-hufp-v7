@@ -424,3 +424,8 @@ This document tracks verified architectural iterations, feature additions, and p
 - **Status**: Verified & Integrated into `main`
 - **Timestamp**: `2026-08-31T13:44:56+0530`
 
+### [2026-09-01 18:52 IST] - `refactor(pipeline): decouple raw granule ingestion from tile slicer`
+- **Component**: SAR Radar & Geospatial Analysis Engine
+- **Status**: Verified & Integrated into `main`
+- **Timestamp**: `2026-09-01T18:52:15+0530`
+
