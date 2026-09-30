@@ -1,0 +1,109 @@
+{
+    "metadata": {
+        "timestamp": "Sat Apr  4 13:24:59 2026",
+        "model_version": "Sentinel V7.0 (Master)",
+        "audit_duration_sec": 2.3262903690338135
+    },
+    "scenarios": {
+        "S1_Baseline": {
+            "avg_risk": 9.342224538888936e-29,
+            "peak_risk": 1.140251397658081e-28,
+            "confidence_variance": 0.0
+        },
+        "S2_Moderate_Monsoon": {
+            "avg_risk": 2.075082833965767e-25,
+            "peak_risk": 2.6194508462364663e-25,
+            "confidence_variance": 0.0
+        },
+        "S3_Flash_Flood": {
+            "avg_risk": 100.0,
+            "peak_risk": 100.0,
+            "confidence_variance": 0.0
+        },
+        "S4_River_Surge": {
+            "avg_risk": 2.9796416540724693e-27,
+            "peak_risk": 3.337009896019176e-27,
+            "confidence_variance": 0.0
+        },
+        "S5_Combined_Extreme": {
+            "avg_risk": 100.0,
+            "peak_risk": 100.0,
+            "confidence_variance": 0.0
+        },
+        "S6_Urban_Drainage_Fail": {
+            "avg_risk": 4.2847839407973193e-19,
+            "peak_risk": 8.474511387527342e-19,
+            "confidence_variance": 6.052208067418885e-42
+        },
+        "S7_Topographic_Test": {
+            "avg_risk": 4.65938498108654e-28,
+            "peak_risk": 4.753512881188522e-28,
+            "confidence_variance": 0.0
+        },
+        "S8_SAR_Verification": {
+            "avg_risk": 7.889390016802567e-28,
+            "peak_risk": 8.817807657653767e-28,
+            "confidence_variance": 0.0
+        },
+        "S9_OOD_Edge_Case": {
+            "avg_risk": 100.0,
+            "peak_risk": 100.0,
+            "confidence_variance": 0.0
+        },
+        "S10_Soil_Saturation": {
+            "avg_risk": 2.745926396054184e-28,
+            "peak_risk": 2.8531289530661245e-28,
+            "confidence_variance": 0.0
+        }
+    },
+    "health_diagnostics": {
+        "total_params": 308801,
+        "weight_sparsity": 0.0,
+        "max_weight_val": 1.3512076139450073,
+        "layers": [
+            {
+                "name": "reshape",
+                "type": "Reshape",
+                "trainable": true
+            },
+            {
+                "name": "bidirectional",
+                "type": "Bidirectional",
+                "trainable": true
+            },
+            {
+                "name": "dropout",
+                "type": "Dropout",
+                "trainable": true
+            },
+            {
+                "name": "bidirectional_1",
+                "type": "Bidirectional",
+                "trainable": true
+            },
+            {
+                "name": "dense",
+                "type": "Dense",
+                "trainable": true
+            },
+            {
+                "name": "dense_1",
+                "type": "Dense",
+                "trainable": true
+            }
+        ]
+    },
+    "feature_importance": {
+        "rainfall_mm": 3.9454875709438577e-25,
+        "runoff_mm": 2.0383502654712494e-25,
+        "river_discharge": 2.723327187419354e-26,
+        "soil_moisture": 2.8482602984632108e-27,
+        "sar_vh": 2.685097246911674e-27,
+        "pop_density": 2.3351303537412475e-27,
+        "elevation": 1.866116145511407e-27,
+        "river_dist": 8.14799714898008e-28
+    },
+    "performance_summary": {
+        "latency_per_100_nodes_ms": 0.0
+    }
+}

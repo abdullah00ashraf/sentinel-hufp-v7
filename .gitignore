@@ -1,0 +1,59 @@
+# Environments & Virtual Envs
+.venv/
+venv/
+env/
+bin/
+include/
+lib/
+share/
+*.dll
+*.pyd
+*.so
+
+# Python Cache & Testing
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Massive Data Matrices & Datasets (>100MB Blockers)
+master_flood_intelligence_80m.csv
+*.npy
+*.npz
+*.parquet
+data/*.csv
+data/**/*.csv
+data/**/*.tif*
+data/**/*.tiff
+data/**/*.pdf
+data/satellite/
+data/geospatial/*.tif*
+data/geospatial/*.tiff
+data/geospatial/*.pdf
+
+# Databases (Local SQLite & Master Vaults)
+*.db
+*.sqlite
+*.sqlite3
+tactical_db/*.db
+
+# Distribution / Build
+dist/
+build/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Security & Environment Variables
+.env
+.env.*
+!.env.example

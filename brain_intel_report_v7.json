@@ -1,0 +1,104 @@
+{
+    "metadata": {
+        "timestamp": "Fri Jul 24 11:37:09 2026",
+        "model_version": "Sentinel V7.0 (Production Master)",
+        "audit_duration_sec": 1.2624571323394775
+    },
+    "scenarios": {
+        "S1_Baseline": {
+            "avg_risk": 22.294800000000006,
+            "peak_risk": 27.33,
+            "confidence_variance": 10.61304496
+        },
+        "S2_Moderate_Monsoon": {
+            "avg_risk": 30.672499999999996,
+            "peak_risk": 36.01,
+            "confidence_variance": 12.92467075
+        },
+        "S3_Flash_Flood": {
+            "avg_risk": 33.7718,
+            "peak_risk": 39.41,
+            "confidence_variance": 16.25890276
+        },
+        "S4_River_Surge": {
+            "avg_risk": 36.169900000000005,
+            "peak_risk": 41.41,
+            "confidence_variance": 13.075338990000002
+        },
+        "S5_Combined_Extreme": {
+            "avg_risk": 50.6474,
+            "peak_risk": 55.97,
+            "confidence_variance": 13.387701239999998
+        },
+        "S6_Urban_Drainage_Fail": {
+            "avg_risk": 31.1376,
+            "peak_risk": 36.7,
+            "confidence_variance": 14.784214239999999
+        },
+        "S7_Topographic_Test": {
+            "avg_risk": 32.607,
+            "peak_risk": 37.7,
+            "confidence_variance": 11.536374999999998
+        },
+        "S8_SAR_Verification": {
+            "avg_risk": 24.039500000000007,
+            "peak_risk": 28.94,
+            "confidence_variance": 10.23435475
+        },
+        "S9_OOD_Edge_Case": {
+            "avg_risk": 40.0623,
+            "peak_risk": 44.88,
+            "confidence_variance": 9.076543710000006
+        },
+        "S10_Soil_Saturation": {
+            "avg_risk": 24.509700000000002,
+            "peak_risk": 29.57,
+            "confidence_variance": 10.936430910000002
+        }
+    },
+    "health_diagnostics": {
+        "total_params": 330497,
+        "weight_sparsity": 0.36363636363636365,
+        "max_weight_val": 1.0,
+        "layers": [
+            {
+                "name": "bidirectional",
+                "type": "Bidirectional",
+                "trainable": true
+            },
+            {
+                "name": "batch_normalization",
+                "type": "BatchNormalization",
+                "trainable": true
+            },
+            {
+                "name": "bidirectional_1",
+                "type": "Bidirectional",
+                "trainable": true
+            },
+            {
+                "name": "dropout",
+                "type": "Dropout",
+                "trainable": true
+            },
+            {
+                "name": "dense",
+                "type": "Dense",
+                "trainable": true
+            },
+            {
+                "name": "dense_1",
+                "type": "Dense",
+                "trainable": true
+            },
+            {
+                "name": "dense_2",
+                "type": "Dense",
+                "trainable": true
+            }
+        ]
+    },
+    "performance_summary": {
+        "latency_per_100_nodes_ms": 0.6682872772216797
+    }
+}
