@@ -41,6 +41,8 @@ tactical_db/*.db
 dist/
 build/
 *.egg-info/
+logs/
+*.log
 
 # OS files
 .DS_Store
