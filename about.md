@@ -183,3 +183,16 @@ Sentinel V7 is audited and certified across ten deterministic stress-test scenar
 | [`Converter_csv2npy.py`](file:///c:/Producttolaunch/HUFP_SENTINEL_V6/Converter_csv2npy.py) | Data Engineering | Chunked conversion of 80M row CSV into binary memory-mapped `.npy` vaults. |
 | [`brain_intel_report_v7.json`](file:///c:/Producttolaunch/HUFP_SENTINEL_V6/brain_intel_report_v7.json) | Diagnostics | Empirical benchmark record (330k parameters, 36% sparsity, 0.668 ms latency). |
 | [`train1.py`](file:///c:/Producttolaunch/HUFP_SENTINEL_V6/train1.py) / [`train2.py`](file:///c:/Producttolaunch/HUFP_SENTINEL_V6/train2.py) | Model Training | TensorFlow/Keras Bi-Directional LSTM training pipelines. |
+
+---
+
+## 6. 🤗 Hugging Face Deployment & Remote Assets
+
+The trained production neural model and the complete memory-mapped 80-million row SAR hydrological dataset are officially hosted on Hugging Face:
+
+* **Neural Sequence Model**: [`abdullahashraf122/sentinel-v7-deep-flood-lstm`](https://huggingface.co/abdullahashraf122/sentinel-v7-deep-flood-lstm)
+  - Packages `bi_lstm_flood_model_v7_deep.keras` and fitted `scaler.joblib`.
+  - Self-contained `inference.py` for immediate deployment.
+* **SAR Hydrological Dataset**: [`abdullahashraf122/lucknow_hufp_datasets`](https://huggingface.co/datasets/abdullahashraf122/lucknow_hufp_datasets)
+  - Memory-mapped arrays `features_80m.npy` (83.9M vectors) and `labels_80m.npy` (2.88 GB).
+

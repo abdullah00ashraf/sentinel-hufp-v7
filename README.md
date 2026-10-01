@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python: >=3.10](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](https://www.python.org/)
+[![Hugging Face Model](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Deep%20Flood%20LSTM-orange.svg)](https://huggingface.co/abdullahashraf122/sentinel-v7-deep-flood-lstm)
+[![Hugging Face Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-83.9M%20Vector%20Dataset-yellow.svg)](https://huggingface.co/datasets/abdullahashraf122/lucknow_hufp_datasets)
 [![Framework: FastAPI](https://img.shields.io/badge/Framework-FastAPI-teal.svg)](https://fastapi.tiangolo.com/)
 [![Deep Learning: Keras / PyTorch](https://img.shields.io/badge/DL-Bi--LSTM%20%7C%20PINN-red.svg)](https://keras.io/)
 [![Explainable AI: SHAP / LIME](https://img.shields.io/badge/XAI-SHAP%20%26%20LIME-yellow.svg)](#explainable-ai)
@@ -152,6 +154,43 @@ python xai_explainability_auditor.py
 
 ---
 
-## 6. License
+## 6. 🤗 Pretrained Models & Datasets on Hugging Face
+
+The trained neural sequence models, fitted feature scalers, and memory-mapped remote sensing arrays for Sentinel V7 are hosted on Hugging Face:
+
+### 1. Neural Sequence Model
+* **`sentinel-v7-deep-flood-lstm`** (Keras 3 / TensorFlow):  
+  [`https://huggingface.co/abdullahashraf122/sentinel-v7-deep-flood-lstm`](https://huggingface.co/abdullahashraf122/sentinel-v7-deep-flood-lstm)  
+  *Dual Bi-LSTM neural sequence model with fitted 8-feature `scaler.joblib` and self-contained `inference.py`.*
+
+### 2. Sentinel-1 SAR 80m Hydrological Dataset
+* **`lucknow_hufp_datasets`** (2.88 GB, 83,986,875 samples):  
+  [`https://huggingface.co/datasets/abdullahashraf122/lucknow_hufp_datasets`](https://huggingface.co/datasets/abdullahashraf122/lucknow_hufp_datasets)  
+  *Memory-mapped NumPy feature matrices (`features_80m.npy` of shape `[83986875, 8]` and `labels_80m.npy`) fusing Copernicus Sentinel-1 SAR backscatter with HydroSHEDS and GEOGloWS discharge.*
+
+```python
+# Quickstart: Download Model & Scaler via huggingface_hub
+from huggingface_hub import hf_hub_download
+import keras
+import joblib
+import numpy as np
+
+model_path = hf_hub_download(repo_id="abdullahashraf122/sentinel-v7-deep-flood-lstm", filename="bi_lstm_flood_model_v7_deep.keras")
+scaler_path = hf_hub_download(repo_id="abdullahashraf122/sentinel-v7-deep-flood-lstm", filename="scaler.joblib")
+
+model = keras.models.load_model(model_path)
+scaler = joblib.load(scaler_path)
+
+# Predict on raw 8-dimensional telemetry octet:
+# [elevation, river_dist, rainfall_mm, runoff_mm, soil_moisture, river_discharge, pop_density, sar_vh]
+raw_sample = np.array([[120.0, 1.2, 145.0, 43.5, 0.88, 1250.0, 3500.0, -28.5]])
+scaled = scaler.transform(raw_sample).reshape(1, 1, 8)
+risk = float(model.predict(scaled, verbose=0)[0, 0])
+print(f"Predicted Flood Vulnerability: {risk:.4f}")
+```
+
+---
+
+## 7. License
 
 This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
