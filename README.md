@@ -2,8 +2,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python: >=3.10](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](https://www.python.org/)
+[![Hugging Face PyTorch PINN](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-20M%20PyTorch%20PINN-blue.svg)](https://huggingface.co/abdullahashraf122/sentinel-mumbai-pinn-v1)
 [![Hugging Face Model](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Deep%20Flood%20LSTM-orange.svg)](https://huggingface.co/abdullahashraf122/sentinel-v7-deep-flood-lstm)
+[![Hugging Face Hybrid PINN](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Hybrid%20PINN%20Keras-red.svg)](https://huggingface.co/abdullahashraf122/sentinel-mumbai-hybrid-pinn-keras)
 [![Hugging Face Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-83.9M%20Vector%20Dataset-yellow.svg)](https://huggingface.co/datasets/abdullahashraf122/lucknow_hufp_datasets)
+[![Hugging Face Parquet](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-27.8GB%20Parquet-darkgreen.svg)](https://huggingface.co/datasets/abdullahashraf122/mumbai-salsette-flood-intelligence-2005-2023)
 [![Framework: FastAPI](https://img.shields.io/badge/Framework-FastAPI-teal.svg)](https://fastapi.tiangolo.com/)
 [![Deep Learning: Keras / PyTorch](https://img.shields.io/badge/DL-Bi--LSTM%20%7C%20PINN-red.svg)](https://keras.io/)
 [![Explainable AI: SHAP / LIME](https://img.shields.io/badge/XAI-SHAP%20%26%20LIME-yellow.svg)](#explainable-ai)
@@ -154,22 +157,38 @@ python xai_explainability_auditor.py
 
 ---
 
-## 6. 🤗 Pretrained Models & Datasets on Hugging Face
+## 6. 🤗 Pretrained Models & Datasets on Hugging Face Hub
+The neural models, PINN loss manifolds, and multi-gigabyte remote sensing datasets powering Sentinel V7 are published and versioned on Hugging Face:
 
-The trained neural sequence models, fitted feature scalers, and memory-mapped remote sensing arrays for Sentinel V7 are hosted on Hugging Face:
-
-### 1. Neural Sequence Model
+### 1. Neural Sequence & PINN Models
+* **`sentinel-mumbai-pinn-v1`** (PyTorch, 20,387,457 Parameters):  
+  [`https://huggingface.co/abdullahashraf122/sentinel-mumbai-pinn-v1`](https://huggingface.co/abdullahashraf122/sentinel-mumbai-pinn-v1)  
+  *6-Layer Bi-LSTM with Self-Attention, trained under combined Log-Cosh Data Loss and Hydraulic Lock Mass Conservation loss manifold.*
 * **`sentinel-v7-deep-flood-lstm`** (Keras 3 / TensorFlow):  
   [`https://huggingface.co/abdullahashraf122/sentinel-v7-deep-flood-lstm`](https://huggingface.co/abdullahashraf122/sentinel-v7-deep-flood-lstm)  
   *Dual Bi-LSTM neural sequence model with fitted 8-feature `scaler.joblib` and self-contained `inference.py`.*
+* **`sentinel-mumbai-hybrid-pinn-keras`** (Keras 3 / Mixed Precision):  
+  [`https://huggingface.co/abdullahashraf122/sentinel-mumbai-hybrid-pinn-keras`](https://huggingface.co/abdullahashraf122/sentinel-mumbai-hybrid-pinn-keras)  
+  *Attention-augmented PINN enforcing continuity PDE residual $\frac{\partial \hat{y}}{\partial t} - (\text{Rain} - \text{Infil}) = 0$.*
 
-### 2. Sentinel-1 SAR 80m Hydrological Dataset
+### 2. Spatiotemporal & Remote Sensing Datasets
 * **`lucknow_hufp_datasets`** (2.88 GB, 83,986,875 samples):  
   [`https://huggingface.co/datasets/abdullahashraf122/lucknow_hufp_datasets`](https://huggingface.co/datasets/abdullahashraf122/lucknow_hufp_datasets)  
   *Memory-mapped NumPy feature matrices (`features_80m.npy` of shape `[83986875, 8]` and `labels_80m.npy`) fusing Copernicus Sentinel-1 SAR backscatter with HydroSHEDS and GEOGloWS discharge.*
+* **`mumbai-salsette-flood-intelligence-2005-2023`** (27.84 GB Parquet, 633,279,552 rows):  
+  [`https://huggingface.co/datasets/abdullahashraf122/mumbai-salsette-flood-intelligence-2005-2023`](https://huggingface.co/datasets/abdullahashraf122/mumbai-salsette-flood-intelligence-2005-2023)  
+  *19 annual multi-decadal Parquet partitions across 216,284 spatial cells, ERA5 weather, 1-min MCGM tides, and Sentinel-1 SAR.*
 
 ```python
-# Quickstart: Download Model & Scaler via huggingface_hub
+# Quickstart A: PyTorch 20M PINN Inference
+from huggingface_hub import hf_hub_download
+import torch
+
+weights_path = hf_hub_download(repo_id="abdullahashraf122/sentinel-mumbai-pinn-v1", filename="sentinel_mumbai_v1.pt")
+state_dict = torch.load(weights_path, map_location="cpu")
+print(f"Loaded 20M PINN state dict with {len(state_dict)} tensor keys.")
+
+# Quickstart B: Keras Bi-LSTM with Fitted Scaler
 from huggingface_hub import hf_hub_download
 import keras
 import joblib
